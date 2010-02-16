@@ -14,7 +14,7 @@
 # limitations under the License.
 #===============================================================================
 
-import os, re, sys
+import re, sys
 from inspect import getargspec
 from textwrap import wrap, fill
 
@@ -32,9 +32,34 @@ def find_param_docs(docstring):
         name = match.group(2)
         value = match.group(3)
         paramdocs[name] = value
+    return paramdocs
 
 def remove_param_docs(docstring):
     return param_exp.sub("", docstring)
+
+
+def process_docstring(docstring):
+    lines = docstring.split("\n")
+    paras = [[]]
+    for line in lines:
+        if not line.strip():
+            paras.append([])
+        else:
+            paras[-1].append(line)
+    paras = [normalize_docstring(" ".join(ls))
+             for ls in paras if ls]
+    return paras
+
+
+def format_paras(paras, width, indent=0):
+    output = []
+    for para in paras:
+        lines = wrap(para, width-indent)
+        if lines:
+            for line in lines:
+                output.append((" " * indent) + line)
+            output.append("")
+    return "\n".join(output)
 
 
 def totype(v, default):
@@ -61,14 +86,17 @@ class CommandError(Exception): pass
 
 
 class Cmd(object):
-    def __init__(self, fn, argnames, keywords,
-                 vargsname, kwargsname, docstring):
+    def __init__(self, name, fn, argnames, keywords, shortopts,
+                 vargsname, kwargsname, docstring, paramdocs):
+        self.name = name
         self.fn = fn
         self.argnames = argnames
         self.keywords = keywords
+        self.shortopts = shortopts
         self.vargsname = vargsname
         self.kwargsname = kwargsname
         self.docstring = docstring
+        self.paramdocs = paramdocs
 
 
 class Baker(object):
@@ -76,9 +104,11 @@ class Baker(object):
         self.commands = {}
         self.defaultcommand = None
     
-    def command(self, fn=None, default=False, params=None):
+    def command(self, fn=None, default=False, params=None, shortopts=None):
         if fn is None:
-            return lambda fn: self.command(fn, default=default, params=params)
+            return lambda fn: self.command(fn, default=default,
+                                           params=params,
+                                           shortopts=shortopts)
         else:
             arglist, vargsname, kwargsname, defaults = getargspec(fn)
             docstring = fn.__doc__ or ""
@@ -90,13 +120,15 @@ class Baker(object):
                     params = find_param_docs(docstring)
                     docstring = remove_param_docs(docstring)
             
-            argnames = arglist[:len(defaults)]
-            if argnames[0] == "self":
-                argnames.pop(0)
+            shortopts = shortopts or {}
+            
+            if arglist[0] == "self":
+                arglist.pop(0)
             keywords = dict(zip(arglist[0-len(defaults):], defaults))
-            cmd = Cmd(fn, argnames, keywords, vargsname, kwargsname,
-                      docstring)
-            self.commands[fn.__name__] = cmd
+            cmd = Cmd(fn.__name__, fn, arglist, keywords, shortopts,
+                      vargsname, kwargsname,
+                      docstring, params)
+            self.commands[cmd.name] = cmd
             
             if default: self.defaultcommand = cmd
     
@@ -108,42 +140,92 @@ class Baker(object):
         print("Available commands:\n\n")
         for cmdname in cmdnames:
             cmd = self.commands[cmdname]
-            docstring = normalize_docstring(cmd.docstring)
-            lines = wrap(docstring, 78-maxlen)
+            paras = process_docstring(cmd.docstring)
             tab = " " * (maxlen - (len(cmdname)+1))
             file.write(" " + cmdname + tab)
-            if lines:
-                file.write(lines[0] + "\n")
-                for line in lines[1:]:
-                    file.write((" " * maxlen) + line + "\n")
+            if paras:
+                file.write(format_paras([paras[0]], 76, indent=maxlen).lstrip())
         file.write("\n")
         file.write('Use "%s COMMAND --help" for individual command help.\n' % scriptname)
         sys.exit(0)
     
-    def run(self, argv):
+    def print_command_help(self, scriptname, cmd, file=sys.stdout):
+        file.write("\nUsage: %s %s" % (scriptname, cmd.name))
+        if cmd.argnames:
+            for name in cmd.argnames:
+                if name in cmd.keywords:
+                    if cmd.keywords[name] is None:
+                        file.write(" [<%s>]" % name)
+                else:
+                    file.write(" <%s>" % name)
+        if cmd.vargsname:
+            file.write(" [...]")
+        file.write("\n\n")
+        
+        paras = process_docstring(cmd.docstring)
+        if paras:
+            file.write(format_paras([paras[0]], 76))
+            if len(paras) > 1:
+                file.write("\n")
+                file.write(format_paras(paras[1:], 76, indent=4))
+            file.write("\n")
+        
+        if cmd.keywords:
+            file.write("Options:\n\n")
+            keynames = sorted(cmd.keywords.keys())
+            
+            heads = []
+            for keyname in keynames:
+                if cmd.keywords[keyname] is None: continue
+                
+                head = " --" + keyname
+                if keyname in cmd.shortopts:
+                    head = " -" + cmd.shortopts[keyname] + head
+                head += "  "
+                heads.append((keyname, head))
+            
+            maxlen = max(len(head) for keyname, head in heads)
+            heads = [(keyname, head + (" " * (maxlen - len(head))))
+                     for keyname, head in heads]
+            
+            for keyname, head in heads:
+                file.write(head)
+                
+                if keyname in cmd.paramdocs:
+                    paras = process_docstring(cmd.paramdocs.get(keyname, ""))
+                    file.write(format_paras(paras, 76, indent=maxlen).lstrip())
+                else:
+                    file.write("\n")
+            file.write("\n")
+        
+        sys.exit(0)
+    
+    def run(self, argv=None):
+        if argv is None: argv = sys.argv
+        
         if (len(argv) < 2) or (argv[1] == "-h" or argv[1] == "--help"):
             self.print_top_help(argv[0])
         elif len(argv) > 1 and argv[1] in self.commands:
             cmd = self.commands[argv[1]]
-            argv.pop(0)
         else:
             cmd = self.defaultcommand
             if cmd is None:
                 raise CommandError("No command specified")
-        args, kwargs = self.parse_args(cmd, argv[1:])
+        args, kwargs = self.parse_args(cmd, argv)
         print args, kwargs
     
     def parse_args(self, cmd, argv):
         keywords = cmd.keywords
-        char2keyword = dict((name[0], name) for name in keywords.iterkeys())
+        shortopts = cmd.shortopts
         
+        scriptname = argv.pop(0)
         vargs = []
         kwargs = keywords.copy()
         
         while argv:
             arg = argv.pop(0)
             if arg == "-h" or arg == "--help":
-                self.print_command_help(cmd)
+                self.print_command_help(scriptname, cmd)
             
             elif arg == "-":
                 vargs.extend(argv)
@@ -174,12 +256,12 @@ class Baker(object):
                     raise CommandError("Couldn't convert %s value %r to type %s" % (name, value, type(default)))
                 kwargs[name] = value
             
-            elif arg.startswith("-"):
+            elif arg.startswith("-") and cmd.shortopts:
                 for i in xrange(1, len(arg)):
                     char = arg[i]
-                    if char not in char2keyword:
+                    if char not in shortopts:
                         raise CommandError("Unknown option -%s" % char)
-                    name = char2keyword[char]
+                    name = shortopts[char]
                     default = keywords[name]
                     if type(default) is bool:
                         kwargs[name] = not default
@@ -203,23 +285,27 @@ run = _baker.run
 
 
 @command(default=True)
-def hello(a, b, c=False, d='bloog', e=200, *args, **kwargs):
+def hello(a, b, c=False, delta='bloog', ec=200, *args, **kwargs):
     """This is a help string
     
-    :param a: the thing
-    :param b: another thing
+    :param c: the thing
+    :param delta: another thing
         that's sort of like
         the first thing
-    :param c: something nothing at all like the first thing.
+    :param ec: something nothing at all like the first thing.
     """
     print "hello"
 
-@command
-def second(name, value="", overwrite=False):
+@command(params={"overwrite": "Overwrite the key if it already exists"},
+         shortopts={"overwrite": "o"})
+def second(name, value=None, overwrite=False):
     """This command sets the named key in the database to the given value, or
     if no value is specified, removes the key from the database. The --overwrite
     option controls whether the key will be overwritten if it already exists
     in the database (the default is to not overwrite).
+    
+    This command is not to be trifled with. It will rip your arm off if you're
+    not careful, sonny.
     """
     
     print "name=", name, "set=", set
@@ -227,7 +313,7 @@ def second(name, value="", overwrite=False):
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv)
+    run()
 
 
 
