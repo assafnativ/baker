@@ -110,14 +110,14 @@ class Cmd(object):
     """
     
     def __init__(self, name, fn, argnames, keywords, shortopts,
-                 vargsname, kwargsname, docstring, paramdocs):
+                 has_varargs, has_kwargs, docstring, paramdocs):
         self.name = name
         self.fn = fn
         self.argnames = argnames
         self.keywords = keywords
         self.shortopts = shortopts
-        self.vargsname = vargsname
-        self.kwargsname = kwargsname
+        self.has_varargs = has_varargs
+        self.has_kwargs = has_kwargs
         self.docstring = docstring
         self.paramdocs = paramdocs
 
@@ -167,6 +167,8 @@ class Baker(object):
             
             # Inspect the argument signature of the function
             arglist, vargsname, kwargsname, defaults = getargspec(fn)
+            has_varargs = bool(vargsname)
+            has_kwargs = bool(kwargsname)
             
             # Get the function's docstring
             docstring = fn.__doc__ or ""
@@ -193,7 +195,7 @@ class Baker(object):
             
             # Create a Cmd object to represent this command and store it
             cmd = Cmd(name, fn, arglist, keywords, shortopts,
-                      vargsname, kwargsname,
+                      has_varargs, has_kwargs,
                       docstring, params)
             self.commands[cmd.name] = cmd
             
@@ -236,7 +238,7 @@ class Baker(object):
                 file.write(format_paras([paras[0]], 76, indent=rindent).lstrip())
         
         file.write("\n")
-        file.write('Use "%s COMMAND --help" for individual command help.\n' % scriptname)
+        file.write('Use "%s <command> --help" for individual command help.\n' % scriptname)
         sys.exit(0)
     
     def print_command_help(self, scriptname, cmd, file=sys.stdout):
@@ -262,7 +264,7 @@ class Baker(object):
                 if cmd.keywords[name] is None:
                     file.write(" [<%s>]" % name)
         
-        if cmd.vargsname:
+        if cmd.has_varargs:
             # This command accepts a variable number of positional arguments
             file.write(" [...]")
         file.write("\n\n")
@@ -319,9 +321,10 @@ class Baker(object):
                     file.write("\n")
             file.write("\n")
             
-            file.write("(specifying a single hyphen (-) in the argument list means all\n")
-            file.write("subsequent arguments are treated as bare arguments, not options)\n")
-            file.write("\n")
+            if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
+                file.write("(specifying a single hyphen (-) in the argument list means all\n")
+                file.write("subsequent arguments are treated as bare arguments, not options)\n")
+                file.write("\n")
         
         sys.exit(0)
     
@@ -342,11 +345,7 @@ class Baker(object):
             # Take the next argument
             arg = argv.pop(0)
             
-            if arg == "-h" or arg == "--help":
-                # Print the help for this command and exit
-                self.print_command_help(scriptname, cmd)
-            
-            elif arg == "-":
+            if arg == "-":
                 # All arguments following a single hyphen are treated as
                 # positional arguments
                 vargs.extend(argv)
@@ -381,9 +380,9 @@ class Baker(object):
                     else:
                         # The next item in the argument list is the value, i.e.
                         # --keyword value
-                        if not argv:
-                            # Oops, there isn't another item available... just
-                            # use True for the purposes of testing
+                        if not argv or argv[0].startswith("-"):
+                            # Oops, there isn't a value available... just use
+                            # True, assuming this is a flag.
                             value = True
                         else:
                             value = argv.pop(0)
@@ -464,6 +463,11 @@ class Baker(object):
             # The first argument on the command line (after the script name
             # is the command to run.
             cmd = self.commands[argv[1]]
+            
+            if len(argv) > 2 and (argv[2] == "-h" or argv[2] == "--help"):
+                # Print the help for this command and exit
+                self.print_command_help(scriptname, cmd)
+            
             options = argv[2:]
         else:
             # No known command was specified. If there's a default command,
@@ -471,12 +475,51 @@ class Baker(object):
             cmd = self.defaultcommand
             if cmd is None:
                 raise CommandError("No command specified")
+            
             options = argv[1:]
         
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.
         args, kwargs = self.parse_args(scriptname, cmd, options)
         return (cmd, args, kwargs)
+    
+    def apply(self, cmd, args, kwargs):
+        """Calls the command function.
+        """
+        
+        # Create a list of positional arguments: arguments that are either
+        # required (not in keywords), or where the default is None (taken to be
+        # an optional positional argument). This is different from the Python
+        # calling convention, which will fill in keyword arguments with extra
+        # positional arguments.
+        posargs = [a for a in cmd.argnames if cmd.keywords.get(a) is None]
+        
+        if len(args) > len(posargs) and not cmd.has_varargs:
+            raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)))
+        
+        if not cmd.has_kwargs:
+            for k in sorted(kwargs.iterkeys()):
+                if k not in cmd.keywords:
+                    raise CommandError("Unknown option --%s" % k)
+        
+        # Rearrange the arguments into the order Python expects
+        newargs = []
+        newkwargs = {}
+        for name in cmd.argnames:
+            if args and cmd.keywords.get(name) is None:
+                # This argument is required or optional and we have a bare arg
+                # to fill it
+                newargs.append(args.pop(0))
+            elif name not in cmd.keywords and not args:
+                # This argument is required but we don't have a bare arg to
+                # fill it
+                raise CommandError("Required argument '%s' not given" % name)
+            else:
+                # This is a keyword argument
+                newkwargs[name] = kwargs.get(name, cmd.keywords[name])
+        newargs.extend(args)
+        
+        cmd.fn(*newargs, **newkwargs)
     
     def run(self, argv=None):
         """Takes a list of command line arguments, parses it into a command
@@ -486,8 +529,7 @@ class Baker(object):
         :param argv: the list of options passed to the command line (sys.argv).
         """
         
-        cmd, args, kwargs = self.parse(argv)
-        cmd.fn(*args, **kwargs)
+        self.apply(*self.parse(argv))
     
     def test(self, argv=None):
         """Takes a list of command line arguments, parses it into a command
@@ -538,11 +580,18 @@ def second(name, value=None, overwrite=False):
     """
     
     print "name=", name, "set=", set
+    
+@command
+def third(verbose=False, debug=False):
+    print "third!"
 
 
 if __name__ == "__main__":
-    import sys
-    test()
+    def t(a, b, c=1, *args):
+        print "a=", repr(a), "b=", repr(b), "c=", repr(c)
+        print "args=", repr(args)
+        
+    run()
 
 
 
