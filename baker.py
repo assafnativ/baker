@@ -147,9 +147,9 @@ class Baker(object):
         :param default: if True, this command is used when a command is not
             specified on the command line.
         :param params: a dictionary mapping parameter names to docstrings. If
-            you don't specify this argument, parameter annotations will be
-            used (Python 3.x only), or the functions docstring will be searched
-            for Sphinx-style ':param' blocks.
+            you don't specify this argument, parameter annotations will be used
+            (Python 3.x only), or the functions docstring will be searched for
+            Sphinx-style ':param' blocks.
         :param shortopts: a dictionary mapping parameter names to short
             options, e.g. {"verbose": "v"}.
         """
@@ -402,7 +402,7 @@ class Baker(object):
                 for i in xrange(1, len(arg)):
                     char = arg[i]
                     if char not in shortchars:
-                        raise CommandError("Unknown option -%s" % char)
+                        continue
                     
                     # Get the long option name corresponding to this char
                     name = shortchars[char]
