@@ -1,7 +1,3 @@
-=====
-Baker
-=====
-
 Overview
 ========
 
@@ -74,7 +70,7 @@ command line interface, using ``optparse``-style options::
 	
 	Options:
 
-     --overwrite
+        --overwrite
    
      
 Arguments
@@ -83,24 +79,22 @@ Arguments
 Baker maps command line options to function parameters in the most natural way
 available.
 
-* Bare arguments are used to fill in required parameters::
+Bare arguments are used to fill in required parameters::
 
 	@baker.command
 	def test(a, b, c):
 	  print "a=", a, "b=", b, "c=", c
 
-  ::
 	$ script.py test 1 2 3
 	a= 1 b= 2 c= 3
 
-* ``--option`` arguments are used to fill in keyword parameters. You can use
-  ``--option value`` or ``--option=value``, as in optparse::
+``--option`` arguments are used to fill in keyword parameters. You can use
+``--option value`` or ``--option=value``, as in optparse::
 
 	@baker.command
 	def test(key="C"):
 		print "In the key of:", key
 
-  ::
 	$ script.py test
 	In the key of: C
 	$ script.py test --key A
@@ -108,44 +102,41 @@ available.
 	$ script.py test --key=Gb
 	In the key of: Gb
 
-* Function parameters where the default is ``None`` are considered optional
-  arguments and will be filled if extra arguments are available. Otherwise,
-  extra bare arguments never fill in keyword parameters::
+Function parameters where the default is ``None`` are considered optional
+arguments and will be filled if extra arguments are available. Otherwise,
+extra bare arguments never fill in keyword parameters::
   
   	@baker.command
   	def test(start, end=None, sortby="time"):
   	  print "start=", start, "end=", end, "sort=", sortby
 
-  ::
   	$ script.py --sortby name 1
   	start= 1 end= sortby= name
   	$ script.py 1 2
   	start= 1 end= 2 sortby= time
 
-* If a keyword parameter's default is an int or float, Baker will try to
-  convert the option's string to the same type::
+If a keyword parameter's default is an int or float, Baker will try to
+convert the option's string to the same type::
   
   	@baker.command
   	def test(limit=10):
   		print type(limit)
 
-  ::
   	$ script.py test --limit 10
   	<type 'int'>
 
-* If the default of a parameter is a boolean, the corresponding command line
-  option is a flag that sets the opposite of the default::
+If the default of a parameter is a boolean, the corresponding command line
+option is a flag that sets the opposite of the default::
   
   	@baker.command
   	def test(name, verbose=False):
   	  if verbose: print "Opening", name
 
-  ::
   	$ script.py test --verbose alfa
   	Opening alfa
 
-* If the function takes ``*`` and/or ``**`` parameters, any leftover arguments
-  and options will fill them in::
+If the function takes ``*`` and/or ``**`` parameters, any leftover arguments
+and options will fill them in.
 
 
 Parameter help
@@ -153,7 +144,7 @@ Parameter help
 
 Baker lets you specify help for parameters in three ways.
 
-* In the decorator::
+In the decorator::
 
 	@baker.command(params={"force": "Delete even if the file exists"})
 	def delete(filename, force=False):
@@ -161,8 +152,8 @@ Baker lets you specify help for parameters in three ways.
 		if force or not os.path.exists(filename):
 			os.remove(filename)
 
-* In Python 3.x, you can use parameter annotations to associate doc strings
-  with parameters::
+In Python 3.x, you can use parameter annotations to associate doc strings
+with parameters::
   
     @baker.command
     def delete(filename, force:"Delete even if the file exists."=False):
@@ -170,7 +161,7 @@ Baker lets you specify help for parameters in three ways.
 		if force or not os.path.exists(filename):
 			os.remove(filename)
 			
-* Baker can parse the function's docstring for Sphinx-style ``:param`` blocks::
+Baker can parse the function's docstring for Sphinx-style ``:param`` blocks::
 
 	@baker.command
 	def delete(filename, force=False):
@@ -192,7 +183,6 @@ the ``shortopts`` keyword on the decorator::
 	def test(verbose=False):
 		pass
 
-::
 	$ script.py test --help
 	
 	Usage: script.py test
@@ -209,24 +199,24 @@ example ``-nCASE`` instead of ``-n CASE``.
 Miscellaneous
 =============
 
-* Instead of ``baker.run()``, you can use ``baker.test()`` to print out how
-  Baker will call your function based on the given command line.
+Instead of ``baker.run()``, you can use ``baker.test()`` to print out how
+Baker will call your function based on the given command line.
 
-* As in many UNIX command line utilities, if you specify a single hyphen
-  (``-``) as a bare argument, any subsequent arguments will not parsed as
-  options, even if they start with ``--``.
+As in many UNIX command line utilities, if you specify a single hyphen
+(``-``) as a bare argument, any subsequent arguments will not parsed as
+options, even if they start with ``--``.
   
-* Commands are automatically given the same name as the decorated function.
-  To give a command a different name, use the ``name`` keyword on the
-  decorator. This is especially useful when the command name you want
-  isn't a valid Python identifier::
+Commands are automatically given the same name as the decorated function.
+To give a command a different name, use the ``name`` keyword on the
+decorator. This is especially useful when the command name you want
+isn't a valid Python identifier::
   
   	@baker.command(name="track-all")
   	def trackall():
   		pass
 
-* You can specify a "default" command that is used when the first argument
-  to the script doesn't look like a command name::
+You can specify a "default" command that is used when the first argument
+to the script doesn't look like a command name::
   
   	@baker.command(default=True)
   	def here(back=False):
@@ -236,7 +226,6 @@ Miscellaneous
   	def there(back=False):
   	  print "there! back=", back
 
-  ::
   	$ script.py --back
   	here! back= True
   	
@@ -249,18 +238,8 @@ Created by Matt Chaput.
 Released under the
 `Apache 2.0 license <http://www.apache.org/licenses/LICENSE-2.0>`_
 
+Please file bugs in the BitBucket issue tracker.
+
 http://bitbucket.org/mchaput/baker
-
-
-
-
-
-
-
-
-
-
-
-
 
 
