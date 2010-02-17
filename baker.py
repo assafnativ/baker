@@ -558,43 +558,8 @@ run = _baker.run
 test = _baker.test
 
 
-@command
-def hello(a, b, c=False, delta='bloog', ec=200, *args, **kwargs):
-    """This is a help string
-    
-    :param c: the thing
-    :param delta: another thing
-        that's sort of like
-        the first thing
-    :param ec: something nothing at all like the first thing.
-    """
-    print "hello"
-
-@command(params={"overwrite": "Overwrite the key if it already exists"},
-         shortopts={"overwrite": "o"})
-def second(name, value=None, overwrite=False):
-    """This command sets the named key in the database to the given value, or
-    if no value is specified, removes the key from the database. The --overwrite
-    option controls whether the key will be overwritten if it already exists
-    in the database (the default is to not overwrite).
-    
-    This command is not to be trifled with. It will rip your arm off if you're
-    not careful, sonny.
-    """
-    
-    print "name=", name, "set=", set
-    
-@command
-def third(verbose=False, debug=False):
-    print "third!"
-
-
 if __name__ == "__main__":
-    def t(a, b, c=1, *args):
-        print "a=", repr(a), "b=", repr(b), "c=", repr(c)
-        print "args=", repr(args)
-        
-    run()
+    pass
 
 
 
