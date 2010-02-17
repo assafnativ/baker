@@ -1,8 +1,9 @@
+=====
 Baker
 =====
 
 Overview
---------
+========
 
 Baker lets you easily add a command line interface to your Python functions
 using a simple decorator, to create scripts with "sub-commands", similar to
@@ -77,7 +78,7 @@ command line interface, using ``optparse``-style options::
    
      
 Arguments
----------
+=========
 
 Baker maps command line options to function parameters in the most natural way
 available.
@@ -148,7 +149,7 @@ available.
 
 
 Parameter help
---------------
+==============
 
 Baker lets you specify help for parameters in three ways.
 
@@ -182,7 +183,7 @@ Baker lets you specify help for parameters in three ways.
     
     
 Short options
--------------
+=============
 
 To allow single-character short options (e.g. ``-v`` for ``--verbose``), use
 the ``shortopts`` keyword on the decorator::
@@ -206,7 +207,7 @@ example ``-nCASE`` instead of ``-n CASE``.
 
 
 Miscellaneous
--------------
+=============
 
 * Instead of ``baker.run()``, you can use ``baker.test()`` to print out how
   Baker will call your function based on the given command line.
@@ -240,6 +241,15 @@ Miscellaneous
   	here! back= True
   	
 
+About Baker
+===========
+
+Created by Matt Chaput.
+
+Released under the
+`Apache 2.0 license <http://www.apache.org/licenses/LICENSE-2.0>`_
+
+http://bitbucket.org/mchaput/baker
 
 
 
