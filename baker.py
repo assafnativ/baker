@@ -301,24 +301,25 @@ class Baker(object):
                 head += "  "
                 heads.append((keyname, head))
             
-            # Find the length of the longest formatted heading
-            rindent = max(len(head) for keyname, head in heads)
-            # Pad the headings so they're all as long as the longest one
-            heads = [(keyname, head + (" " * (rindent - len(head))))
-                     for keyname, head in heads]
+            if heads:
+                # Find the length of the longest formatted heading
+                rindent = max(len(head) for keyname, head in heads)
+                # Pad the headings so they're all as long as the longest one
+                heads = [(keyname, head + (" " * (rindent - len(head))))
+                         for keyname, head in heads]
             
-            # Print the option docs
-            for keyname, head in heads:
-                # Print the heading
-                file.write(head)
-
-                # If this parameter has documentation, print it after the
-                # heading
-                if keyname in cmd.paramdocs:
-                    paras = process_docstring(cmd.paramdocs.get(keyname, ""))
-                    file.write(format_paras(paras, 76, indent=rindent).lstrip())
-                else:
-                    file.write("\n")
+                # Print the option docs
+                for keyname, head in heads:
+                    # Print the heading
+                    file.write(head)
+    
+                    # If this parameter has documentation, print it after the
+                    # heading
+                    if keyname in cmd.paramdocs:
+                        paras = process_docstring(cmd.paramdocs.get(keyname, ""))
+                        file.write(format_paras(paras, 76, indent=rindent).lstrip())
+                    else:
+                        file.write("\n")
             file.write("\n")
             
             if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
