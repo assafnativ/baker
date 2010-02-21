@@ -1,3 +1,14 @@
+History
+=======
+
+Version 1.1
+	* ``baker.run()`` now prints the return value of the command function.
+	* Command usage help now shows help for optional arguments.
+	* Added options to ``baker.run()``.
+	* Added ``baker.usage([commandname])``.
+	* Added unit tests.
+	* Fixed bugs.
+
 Overview
 ========
 
@@ -37,7 +48,7 @@ Django's ``manage.py``, ``svn``, ``hg``, etc.::
 		print db.get(name)
 		
 	baker.run()
-	
+
 You can then run the script and use your function names and parameters as the
 command line interface, using ``optparse``-style options::
 
@@ -196,6 +207,40 @@ optionally not put a space between a short option and its argument, for
 example ``-nCASE`` instead of ``-n CASE``.
 
 
+``run()`` function
+==================
+
+The ``run()`` function has a few useful options.
+
+* ``argv``: the list of options to parse. Default is ``sys.argv``.
+* ``main``: if True (the default), this function acts like the main function
+  of the module -- it prints errors instead of raising exceptions, prints
+  the return value of the command function, and exits with an error code on
+  errors.
+* ``help_on_error``: if True, when an error occurs, automatically prints
+  the usage help after the error message. Default is False.
+* ``outfile``, ``errorfile``, ``helpfile``: the files to use for output,
+  errors, and usage help. Defaults are stdout, stderr, and stdout.
+* ``errorcode``: if main=True and this value is not 0, calls ``sys.exit()``
+  with this code in the event of an error
+
+
+``usage()`` function
+====================
+
+Use the ``usage()`` function if you need to print the usage help
+programmatically::
+
+	# Print overall help
+	baker.usage()
+	
+	# Print help for a command
+	baker.usage("commandname")
+	
+	# Print to a file
+	baker.usage("commandname", file=sys.stdout)
+
+
 Miscellaneous
 =============
 
@@ -229,6 +274,17 @@ to the script doesn't look like a command name::
   	$ script.py --back
   	here! back= True
   	
+The ``baker`` module contains a ``Baker`` class you can instantiate if you
+don't want to use the global functions::
+
+	mybaker = baker.Baker()
+	
+	@mybaker.command
+	def test():
+		print "hello"
+	
+	mybaker.run()
+
 
 About Baker
 ===========

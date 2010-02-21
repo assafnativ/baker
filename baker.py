@@ -102,7 +102,34 @@ def totype(v, default):
         return v
 
 
-class CommandError(Exception): pass
+class CommandError(Exception):
+    """General exception for Baker errors, usually related to parsing the
+    command line.
+    """
+    
+    def __init__(self, msg, scriptname, cmd=None):
+        Exception.__init__(self, msg)
+        self.scriptname = scriptname
+        self.commandname = cmd
+
+class TopHelp(Exception):
+    """Exception raised by Baker.parse() to indicate the user requested the
+    overall help for the script, e.g. by typing "script.py help" or
+    "script.py --help"
+    """
+    
+    def __init__(self, scriptname):
+        self.scriptname = scriptname
+
+class CommandHelp(Exception):
+    """Exception raised by baker.parse() to indicate the user requested help
+    for a specific command, e.g. by typing "script.py command --help" or
+    "script.py help command".
+    """
+    
+    def __init__(self, scriptname, cmd):
+        self.scriptname = scriptname
+        self.cmd = cmd
 
 
 class Cmd(object):
@@ -160,6 +187,7 @@ class Baker(object):
             # so we have to return a function that will wrap the function when
             # the decorator is applied.
             return lambda fn: self.command(fn, default=default,
+                                           name=name,
                                            params=params,
                                            shortopts=shortopts)
         else:
@@ -193,7 +221,7 @@ class Baker(object):
                 keywords = {}
             
             # If this is a method, remove 'self' from the argument list
-            if arglist[0] == "self":
+            if arglist and arglist[0] == "self":
                 arglist.pop(0)
             
             # Create a Cmd object to represent this command and store it
@@ -207,6 +235,18 @@ class Baker(object):
             
             return fn
     
+    def usage(self, cmd=None, scriptname=None, file=sys.stdout):
+        if scriptname is None:
+            scriptname = sys.argv[0]
+        
+        if cmd is None:
+            self.print_top_help(scriptname, file=file)
+        else:
+            if isinstance(cmd, basestring):
+                cmd = self.commands[cmd]
+            
+            self.print_command_help(scriptname, cmd, file=file)
+    
     def print_top_help(self, scriptname, file=sys.stdout):
         """Prints the documentation for the script and exits.
         
@@ -214,35 +254,38 @@ class Baker(object):
         :param file: the file to write the help to. The default is stdout.
         """
         
-        # Get a sorted list of all command names
-        cmdnames = sorted(self.commands.keys())
-        
-        # Calculate the indent for the doc strings by taking the longest
-        # command name and adding 3 (one space before the name and two after)
-        rindent = max(len(name) for name in cmdnames) + 3
-        
         # Print the basic help for running a command
         file.write("\nUsage: %s COMMAND <options>\n\n" % scriptname)
         
-        print("Available commands:\n\n")
-        for cmdname in cmdnames:
-            # Get the Cmd object for this command
-            cmd = self.commands[cmdname]
+        # Get a sorted list of all command names
+        cmdnames = sorted(self.commands.keys())
+        if cmdnames:
+            # Calculate the indent for the doc strings by taking the longest
+            # command name and adding 3 (one space before the name and two
+            # after)
+            rindent = max(len(name) for name in cmdnames) + 3
             
-            # Calculate the padding necessary to fill from the end of the
-            # command name to the documentation margin
-            tab = " " * (rindent - (len(cmdname)+1))
-            file.write(" " + cmdname + tab)
+            print("Available commands:\n")
+            for cmdname in cmdnames:
+                # Get the Cmd object for this command
+                cmd = self.commands[cmdname]
+                
+                # Calculate the padding necessary to fill from the end of the
+                # command name to the documentation margin
+                tab = " " * (rindent - (len(cmdname)+1))
+                file.write(" " + cmdname + tab)
+                
+                # Get the paragraphs of the command's docstring
+                paras = process_docstring(cmd.docstring)
+                if paras:
+                    # Print the first paragraph
+                    file.write(format_paras([paras[0]], 76,
+                                            indent=rindent).lstrip())
+                else:
+                    file.write("\n")
             
-            # Get the paragraphs of the command's docstring
-            paras = process_docstring(cmd.docstring)
-            if paras:
-                # Print the first paragraph
-                file.write(format_paras([paras[0]], 76, indent=rindent).lstrip())
-        
         file.write("\n")
         file.write('Use "%s <command> --help" for individual command help.\n' % scriptname)
-        sys.exit(0)
     
     def print_command_help(self, scriptname, cmd, file=sys.stdout):
         """Prints the documentation for a specific command and exits.
@@ -296,11 +339,11 @@ class Baker(object):
             # a list like [(name, heading), ...]
             heads = []
             for keyname in keynames:
-                if cmd.keywords[keyname] is None: continue
-                
-                head = " --" + keyname
-                if keyname in cmd.shortopts:
-                    head = " -" + cmd.shortopts[keyname] + head
+                head = keyname
+                if cmd.keywords[keyname] is not None:
+                    head = " --" + head
+                    if keyname in cmd.shortopts:
+                        head = " -" + cmd.shortopts[keyname] + head
                 head += "  "
                 heads.append((keyname, head))
             
@@ -330,11 +373,14 @@ class Baker(object):
                 file.write("subsequent arguments are treated as bare arguments, not options)\n")
                 file.write("\n")
         
-        sys.exit(0)
-    
-    def parse_args(self, scriptname, cmd, argv):
+    def parse_args(self, scriptname, cmd, argv, test=False):
         keywords = cmd.keywords
         shortopts = cmd.shortopts
+        
+        def type_error(name, value, t):
+            if not test:
+                msg = "%s value %r must be %s" % (name, value, t)
+                raise CommandError(msg, scriptname, cmd)
         
         # shortopts maps long option names to characters. To look up short
         # options, we need to create a reverse mapping.
@@ -369,8 +415,8 @@ class Baker(object):
                     default = keywords.get(name)
                     try:
                         value = totype(value, default)
-                    except TypeError:
-                        pass
+                    except (TypeError, ValueError):
+                        type_error(name, value, type(default))
                 else:
                     # The argument was not specified with an equals sign...
                     name = arg[2:]
@@ -393,8 +439,8 @@ class Baker(object):
                         
                         try:
                             value = totype(value, default)
-                        except TypeError:
-                            pass
+                        except (TypeError, ValueError):
+                            type_error(name, value, type(default)) 
                 
                 # Store this option
                 kwargs[name] = value
@@ -427,12 +473,12 @@ class Baker(object):
                             # There are other characters after this one, so
                             # the rest of the characters must represent the
                             # value (i.e. old-style UNIX option like -Nname)
-                            value = totype(arg[i+1:], default)
+                            value = arg[i+1:]
                         
                         try:
                             kwargs[name] = totype(value, default)
-                        except ValueError:
-                            raise CommandError("Couldn't convert %s value %r to type %s" % (name, value, type(default)))
+                        except (TypeError, ValueError):
+                            type_error(name, value, type(default))
                         break
             else:
                 # This doesn't start with "-", so just add it to the list of
@@ -443,8 +489,12 @@ class Baker(object):
     
     def parse(self, argv=None):
         """Parses the command and parameters to call from the list of command
-        line arguments. Returns a tuple of (Cmd object, position arg list,
-        keyword arg dict).
+        line arguments. Returns a tuple of (scriptname string, Cmd object,
+        position arg list, keyword arg dict).
+        
+        This method will raise TopHelp if the parser finds that the user
+        requested the overall script help, and raise CommandHelp if the user
+        requested help on a specific command.
         
         :param argv: the list of options passed to the command line (sys.argv).
         """
@@ -455,13 +505,13 @@ class Baker(object):
         
         if (len(argv) < 2) or (argv[1] == "-h" or argv[1] == "--help"):
             # Print the documentation for the script
-            self.print_top_help(scriptname)
+            raise TopHelp(scriptname)
         
         if argv[1] == "help":
             if len(argv) > 2 and argv[2] in self.commands:
                 cmd = self.commands[argv[2]]
-                self.print_command_help(scriptname, cmd)
-            self.print_top_help(scriptname)
+                raise CommandHelp(scriptname, cmd)
+            raise TopHelp(scriptname)
         
         if len(argv) > 1 and argv[1] in self.commands:
             # The first argument on the command line (after the script name
@@ -469,8 +519,7 @@ class Baker(object):
             cmd = self.commands[argv[1]]
             
             if len(argv) > 2 and (argv[2] == "-h" or argv[2] == "--help"):
-                # Print the help for this command and exit
-                self.print_command_help(scriptname, cmd)
+                raise CommandHelp(scriptname, cmd)
             
             options = argv[2:]
         else:
@@ -478,16 +527,16 @@ class Baker(object):
             # use that.
             cmd = self.defaultcommand
             if cmd is None:
-                raise CommandError("No command specified")
+                raise CommandError("No command specified", scriptname)
             
             options = argv[1:]
         
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.
         args, kwargs = self.parse_args(scriptname, cmd, options)
-        return (cmd, args, kwargs)
+        return (scriptname, cmd, args, kwargs)
     
-    def apply(self, cmd, args, kwargs):
+    def apply(self, scriptname, cmd, args, kwargs, help_on_error=False):
         """Calls the command function.
         """
         
@@ -499,41 +548,76 @@ class Baker(object):
         posargs = [a for a in cmd.argnames if cmd.keywords.get(a) is None]
         
         if len(args) > len(posargs) and not cmd.has_varargs:
-            raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)))
+            raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)),
+                               scriptname, cmd)
         
         if not cmd.has_kwargs:
             for k in sorted(kwargs.iterkeys()):
                 if k not in cmd.keywords:
-                    raise CommandError("Unknown option --%s" % k)
+                    raise CommandError("Unknown option --%s" % k,
+                                       scriptname, cmd)
         
         # Rearrange the arguments into the order Python expects
         newargs = []
-        newkwargs = {}
+        newkwargs = kwargs.copy()
         for name in cmd.argnames:
             if args and cmd.keywords.get(name) is None:
                 # This argument is required or optional and we have a bare arg
                 # to fill it
-                newargs.append(args.pop(0))
+                value = args.pop(0)
+                if name in cmd.keywords:
+                    newkwargs[name] = value
+                else:
+                    newargs.append(value)
             elif name not in cmd.keywords and not args:
                 # This argument is required but we don't have a bare arg to
                 # fill it
-                raise CommandError("Required argument '%s' not given" % name)
+                raise CommandError("Required argument '%s' not given" % name,
+                                   scriptname, cmd)
             else:
                 # This is a keyword argument
                 newkwargs[name] = kwargs.get(name, cmd.keywords[name])
         newargs.extend(args)
         
-        cmd.fn(*newargs, **newkwargs)
+        return cmd.fn(*newargs, **newkwargs)
     
-    def run(self, argv=None):
+    def run(self, argv=None, main=True, help_on_error=False,
+            outfile=sys.stdout, errorfile=sys.stderr, helpfile=sys.stdout,
+            errorcode=1):
         """Takes a list of command line arguments, parses it into a command
         name and options, and calls the function corresponding to the command
         with the given arguments.
         
         :param argv: the list of options passed to the command line (sys.argv).
+        :param main: if True, print error messages and exit instead of
+            raising an exception.
+        :param help_on_error: if True, when an error occurs, print the usage
+            help after the error.
+        :param errorfile: the file to write error messages to.
+        :param helpfile: the file to write usage help to.
+        :param errorcode: the exit code to use when calling sys.exit() in the
+            case of an error. If this is 0, sys.exit() will not be called.
         """
         
-        self.apply(*self.parse(argv))
+        try:
+            value = self.apply(*self.parse(argv))
+            if main and value is not None:
+                print value
+            return value
+        except TopHelp, e:
+            if not main: raise
+            self.usage(scriptname=e.scriptname, file=helpfile)
+        except CommandHelp, e:
+            if not main: raise
+            self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
+        except CommandError, e:
+            if not main: raise
+            errorfile.write(str(e) + "\n")
+            if help_on_error:
+                errorfile.write("\n")
+                self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
+            if errorcode:
+                sys.exit(errorcode)
     
     def test(self, argv=None):
         """Takes a list of command line arguments, parses it into a command
@@ -544,19 +628,25 @@ class Baker(object):
         :param argv: the list of options passed to the command line (sys.argv).
         """
         
-        cmd, args, kwargs = self.parse(argv)
-        result = "%s(%s" % (cmd.name, ",".join(repr(a) for a in args))
-        if kwargs:
-            kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
-            result += ", " + kws
-        result += ")"
-        print result
+        try:
+            cmd, args, kwargs = self.parse(argv, test=True)
+            result = "%s(%s" % (cmd.name, ",".join(repr(a) for a in args))
+            if kwargs:
+                kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
+                result += ", " + kws
+            result += ")"
+            print result
+        except TopHelp:
+            print "(top-level help)"
+        except CommandHelp, e:
+            print "(help for %s command)" % e.cmd.name
     
 
 _baker = Baker()
 command = _baker.command
 run = _baker.run
 test = _baker.test
+usage = _baker.usage
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name="Baker",
-      version="1.02",
+      version="1.1",
       py_modules=["baker"],
       
       author="Matt Chaput",
