@@ -235,7 +235,10 @@ class Baker(object):
             
             return fn
     
-    def usage(self, cmd=None, scriptname=None, file=sys.stdout):
+    def usage(self, cmd=None, scriptname=None, exception=None, file=sys.stdout):
+        if exception is not None:
+            scriptname, cmd = exception.scriptname, exception.cmd
+        
         if scriptname is None:
             scriptname = sys.argv[0]
         
