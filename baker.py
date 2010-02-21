@@ -539,7 +539,7 @@ class Baker(object):
         args, kwargs = self.parse_args(scriptname, cmd, options)
         return (scriptname, cmd, args, kwargs)
     
-    def apply(self, scriptname, cmd, args, kwargs, help_on_error=False):
+    def apply(self, scriptname, cmd, args, kwargs):
         """Calls the command function.
         """
         
