@@ -195,7 +195,7 @@ class Baker(object):
             name = name or fn.__name__
             
             # Inspect the argument signature of the function
-            arglist, vargsname, kwargsname, defaults = getargspec(fn)
+            arglist, vargsname, kwargsname, keyworddefaults = getargspec(fn)
             has_varargs = bool(vargsname)
             has_kwargs = bool(kwargsname)
             
@@ -207,6 +207,7 @@ class Baker(object):
             # or RST-style :param: lines in the docstring
             if params is None:
                 if hasattr(fn, "func_annotations") and fn.func_annotations:
+                    # Python 3.x
                     params = fn.func_annotations
                 else:
                     params = find_param_docs(docstring)
@@ -216,8 +217,8 @@ class Baker(object):
             shortopts = shortopts or {}
             
             # Zip up the keyword argument names with their defaults
-            if defaults:
-                keywords = dict(zip(arglist[0-len(defaults):], defaults))
+            if keyworddefaults:
+                keywords = dict(zip(arglist[0-len(keyworddefaults):], keyworddefaults))
             else:
                 keywords = {}
             
