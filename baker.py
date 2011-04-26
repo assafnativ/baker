@@ -447,10 +447,8 @@ class Baker(object):
                 # This is a positional argument
                 file.write(" <%s>" % name)
             else:
-                # This is a keyword argument, so skip it unless the default is
-                # None, in which case treat it like an optional argument.
-                if cmd.keywords[name] is None:
-                    file.write(" [<%s>]" % name)
+                # This is a keyword/optional argument
+                file.write(" [<%s>]" % name)
         
         if cmd.has_varargs:
             # This command accepts a variable number of positional arguments
@@ -510,6 +508,9 @@ class Baker(object):
                 if "=" in arg:
                     # The argument was specified like --keyword=value
                     name, value = arg[2:].split("=", 1)
+                    # strip quotes if value is quoted (--keyword='multiple words')
+                    value = value.strip('\'"')
+
                     default = keywords.get(name)
                     try:
                         value = totype(value, default)
@@ -643,17 +644,6 @@ class Baker(object):
         # an optional positional argument). This is different from the Python
         # calling convention, which will fill in keyword arguments with extra
         # positional arguments.
-        posargs = [a for a in cmd.argnames if cmd.keywords.get(a) is None]
-        
-        if len(args) > len(posargs) and not cmd.has_varargs:
-            raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)),
-                               scriptname, cmd)
-        
-        if not cmd.has_kwargs:
-            for k in sorted(kwargs.iterkeys()):
-                if k not in cmd.keywords:
-                    raise CommandError("Unknown option --%s" % k,
-                                       scriptname, cmd)
         
         # Rearrange the arguments into the order Python expects
         newargs = []
