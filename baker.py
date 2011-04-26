@@ -251,7 +251,20 @@ class Baker(object):
                 cmd = self.commands[cmd]
             
             self.print_command_help(scriptname, cmd, file=file)
-    
+
+    def openinput(self, filein):
+        if filein == '-':
+            return sys.stdin
+        import os.path
+        ext = os.path.splitext(filein)[1]
+        if ext in ['.gz', '.GZ']:
+            import gzip
+            return gzip.open(filein, 'rb')
+        if ext in ['.bz', '.bz2']:
+            import bz2
+            return bz2.BZ2File(filein, 'rb')
+        return open(filein, 'rb')
+
     def writeconfig(self, iniconffile=sys.argv[0] + ".ini"):
         """OVERWRITES an ini style config file that holds all of the default command line options.
 
@@ -469,20 +482,26 @@ class Baker(object):
         # arguments
         vargs = []
         kwargs = {}
-        
+       
+        doubledashcnt = 0
+        singledashcnt = 0
         while argv:
             # Take the next argument
             arg = argv.pop(0)
             
-            if arg == "-":
+            if arg == "--":
+                doubledashcnt = doubledashcnt + 1
+                assert doubledashcnt == 1
                 # All arguments following a single hyphen are treated as
                 # positional arguments
                 vargs.extend(argv)
                 break
             
-            elif arg == "--":
-                # What to do with a bare --? Right now, it's ignored.
-                continue
+            elif arg == "-":
+                # sys.stdin
+                singledashcnt = singledashcnt + 1
+                assert singledashcnt == 1
+                vargs.append('-')
             
             elif arg.startswith("--"):
                 # Process long option
@@ -751,6 +770,7 @@ run = _baker.run
 test = _baker.test
 usage = _baker.usage
 writeconfig = _baker.writeconfig
+openinput = _baker.openinput
 
 
 if __name__ == "__main__":
