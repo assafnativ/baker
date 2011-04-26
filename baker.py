@@ -64,19 +64,20 @@ def process_docstring(docstring):
     return paras
 
 
-def format_paras(paras, width, indent=0):
+def format_paras(paras, width, indent=0, lstripline=[]):
     """Takes a list of paragraph strings and formats them into a word-wrapped,
     optionally indented string.
     """
     
     output = []
     for para in paras:
-        lines = wrap(para, width-indent)
+        lines = wrap(para, width - indent)
         if lines:
             for line in lines:
                 output.append((" " * indent) + line)
-            output.append("")
-    return "\n".join(output)
+    for i in lstripline:
+        output[i] = output[i].lstrip()
+    return output
 
 
 def totype(v, default):
@@ -250,6 +251,29 @@ class Baker(object):
             
             self.print_command_help(scriptname, cmd, file=file)
     
+    def writeconfig(self, iniconffile=sys.argv[0] + ".ini"):
+        """OVERWRITES an ini style config file that holds all of the default command line options.
+
+        :param iniconffile: the file name of the ini file, defaults to 'script.ini'.
+        """
+
+        import os
+        fp = open(iniconffile, "w")
+        for cmdname in self.commands:
+            cmd = self.commands[cmdname]
+            fp.write(os.linesep)
+            fp.write("[{0}]".format(cmdname) + os.linesep)
+            for line in self.return_cmd_doc(cmd):
+                fp.write("# " + line + os.linesep)
+            for line in self.return_argnames_doc(cmd):
+                fp.write("# " + line + os.linesep)
+            for key in cmd.keywords:
+                for line in self.return_individual_keyword_doc(cmd, key, self.return_head(cmd, key)):
+                    fp.write("# " + line + os.linesep)
+                fp.write("{0} = {1}".format(key, cmd.keywords[key]) + os.linesep)
+                fp.write(os.linesep)
+
+
     def print_top_help(self, scriptname, file=sys.stdout):
         """Prints the documentation for the script and exits.
         
@@ -282,14 +306,115 @@ class Baker(object):
                 paras = process_docstring(cmd.docstring)
                 if paras:
                     # Print the first paragraph
-                    file.write(format_paras([paras[0]], 76,
-                                            indent=rindent).lstrip())
+                    file.write("\n".join(format_paras([paras[0]], 76,
+                                            indent=rindent, lstripline=[0])))
+                    file.write("\n")
                 else:
                     file.write("\n")
             
         file.write("\n")
         file.write('Use "%s <command> --help" for individual command help.\n' % scriptname)
-    
+   
+    def return_cmd_doc(self, cmd):
+        # Print the documentation for this command
+        paras = process_docstring(cmd.docstring)
+        ret = []
+        if paras:
+            # Print the first paragraph with no indent (usually just a summary
+            # line)
+            for line in format_paras([paras[0]], 76):
+                ret.append(line)
+            
+            # Print subsequent paragraphs indented by 4 spaces
+            if len(paras) > 1:
+                ret.append("")
+                for line in format_paras(paras[1:], 76, indent=4):
+                    ret.append(line)
+            ret.append("")
+        return ret
+
+    def return_argnames_doc(self, cmd):
+        # Added by abhikshah@gmail.com, 5/6/2010
+        # Return documentation for required arguments
+        ret = []
+        posargs = [a for a in cmd.argnames if a not in cmd.keywords]
+        if posargs:
+            ret.append("")
+            ret.append("Required Arguments:")
+            ret.append("")
+
+            # Find the length of the longest formatted heading
+            rindent = max(len(argname) + 3 for argname in posargs)
+            # Pad the headings so they're all as long as the longest one
+            heads = [(head, head + (" " * (rindent - len(head))) ) for head in posargs]
+            
+            # Print the arg docs
+            for keyname, head in heads:
+                ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent=rindent)
+        ret.append("")
+        return ret
+
+    def return_individual_keyword_doc(self, cmd, keyname, head, rindent=None):
+        # Return documentation for optional arguments
+        ret = []
+        if rindent == None:
+            rindent = len(head) + 2
+        if keyname in cmd.paramdocs:
+            paras = process_docstring(cmd.paramdocs.get(keyname, ""))
+            for cnt, line in enumerate(format_paras(paras, 76, indent=rindent, lstripline=[0])):
+                if cnt == 0:
+                    ret.append("  " + head + line)
+                else:
+                    ret.append("  " + line)
+        else:
+            ret.append("")
+        return ret
+
+    def return_head(self, cmd, keyname):
+        head = keyname
+        head = " --" + head
+        if keyname in cmd.shortopts:
+            head = " -" + cmd.shortopts[keyname] + head
+        head += "  "
+        return head
+
+    def return_keyword_doc(self, cmd):
+        # Return documentation for optional arguments
+        ret = []
+        if cmd.keywords:
+            ret.append("")
+            ret.append("Options:")
+            ret.append("")
+            
+            # Get a list of keyword argument names
+            keynames = cmd.keywords.keys()
+            
+            # Make formatted headings, e.g. " -k --keyword  ", and put them in
+            # a list like [(name, heading), ...]
+            heads = []
+            for keyname in keynames:
+                head = self.return_head(cmd, keyname)
+                heads.append((keyname, head))
+            
+            if heads:
+                # Find the length of the longest formatted heading
+                rindent = max(len(head) + 2 for keyname, head in heads)
+                # Pad the headings so they're all as long as the longest one
+                heads = [(keyname, head + (" " * (rindent - len(head) - 2)))
+                         for keyname, head in heads]
+            
+                # Print the option docs
+                for keyname, head in heads:
+                    ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent)
+
+            ret.append("")
+            
+            if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
+                ret.append("(specifying a double hyphen (--) in the argument list means all")
+                ret.append("subsequent arguments are treated as bare arguments, not options)")
+                ret.append("")
+        return ret
+
     def print_command_help(self, scriptname, cmd, file=sys.stdout):
         """Prints the documentation for a specific command and exits.
         
@@ -318,63 +443,13 @@ class Baker(object):
             file.write(" [...]")
         file.write("\n\n")
         
-        # Print the documentation for this command
-        paras = process_docstring(cmd.docstring)
-        if paras:
-            # Print the first paragraph with no indent (usually just a summary
-            # line)
-            file.write(format_paras([paras[0]], 76))
-            
-            # Print subsequent paragraphs indented by 4 spaces
-            if len(paras) > 1:
-                file.write("\n")
-                file.write(format_paras(paras[1:], 76, indent=4))
-            file.write("\n")
-        
-        # Print documentation for keyword options
-        if cmd.keywords:
-            file.write("Options:\n\n")
-            
-            # Get a sorted list of keyword argument names
-            keynames = sorted(cmd.keywords.keys())
-            
-            # Make formatted headings, e.g. " -k --keyword  ", and put them in
-            # a list like [(name, heading), ...]
-            heads = []
-            for keyname in keynames:
-                head = keyname
-                if cmd.keywords[keyname] is not None:
-                    head = " --" + head
-                    if keyname in cmd.shortopts:
-                        head = " -" + cmd.shortopts[keyname] + head
-                head += "  "
-                heads.append((keyname, head))
-            
-            if heads:
-                # Find the length of the longest formatted heading
-                rindent = max(len(head) for keyname, head in heads)
-                # Pad the headings so they're all as long as the longest one
-                heads = [(keyname, head + (" " * (rindent - len(head))))
-                         for keyname, head in heads]
-            
-                # Print the option docs
-                for keyname, head in heads:
-                    # Print the heading
-                    file.write(head)
-    
-                    # If this parameter has documentation, print it after the
-                    # heading
-                    if keyname in cmd.paramdocs:
-                        paras = process_docstring(cmd.paramdocs.get(keyname, ""))
-                        file.write(format_paras(paras, 76, indent=rindent).lstrip())
-                    else:
-                        file.write("\n")
-            file.write("\n")
-            
-            if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
-                file.write("(specifying a single hyphen (-) in the argument list means all\n")
-                file.write("subsequent arguments are treated as bare arguments, not options)\n")
-                file.write("\n")
+        file.write("\n".join(self.return_cmd_doc(cmd)))
+
+        file.write("\n".join(self.return_argnames_doc(cmd)))
+
+        file.write("\n".join(self.return_keyword_doc(cmd)))
+
+
         
     def parse_args(self, scriptname, cmd, argv, test=False):
         keywords = cmd.keywords
@@ -564,23 +639,47 @@ class Baker(object):
         newargs = []
         newkwargs = kwargs.copy()
         for name in cmd.argnames:
-            if args and cmd.keywords.get(name) is None:
-                # This argument is required or optional and we have a bare arg
-                # to fill it
-                value = args.pop(0)
-                if name in cmd.keywords:
-                    newkwargs[name] = value
-                else:
+            if name in cmd.keywords:
+                if not args:
+                    break
+                #keyword arg
+                if cmd.has_varargs:
+                    #keyword params are not replaced by bare args if the func also has varags
+                    #but they must be specified as positional args for proper processing of varargs
+                    value = cmd.keywords[name]
+                    if name in newkwargs:
+                        value = newkwargs[name]
+                        del newkwargs[name]
                     newargs.append(value)
-            elif name not in cmd.keywords and not args:
-                # This argument is required but we don't have a bare arg to
-                # fill it
-                raise CommandError("Required argument '%s' not given" % name,
-                                   scriptname, cmd)
+                elif not name in newkwargs:
+                    newkwargs[name] = args.pop(0)
+                
             else:
-                # This is a keyword argument
-                newkwargs[name] = kwargs.get(name, cmd.keywords[name])
-        newargs.extend(args)
+                #positional arg
+                if name in newkwargs:
+                    newargs.append(newkwargs[name])
+                    del newkwargs[name]
+                else:
+                    if args:
+                        newargs.append(args.pop(0))
+                    else:
+                        # This argument is required but we don't have a bare arg to
+                        # fill it
+                        raise CommandError("Required argument '%s' not given" % name,
+                                           scriptname, cmd)
+        if args:
+            if cmd.has_varargs:
+                newargs.extend(args)
+            else:
+                raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)),
+                               scriptname, cmd)
+                
+        if not cmd.has_kwargs:
+            for k in newkwargs:
+                if k not in cmd.keywords:
+                    raise CommandError("Unknown option --%s" % k,
+                                       scriptname, cmd)
+        
         
         return cmd.fn(*newargs, **newkwargs)
     
@@ -650,6 +749,7 @@ command = _baker.command
 run = _baker.run
 test = _baker.test
 usage = _baker.usage
+writeconfig = _baker.writeconfig
 
 
 if __name__ == "__main__":
