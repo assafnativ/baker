@@ -1,12 +1,12 @@
 #===============================================================================
 # Copyright 2010 Matt Chaput
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #    http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,17 +28,18 @@ def normalize_docstring(docstring):
 param_exp = re.compile(r"^([\t ]*):param (.*?): ([^\n]*\n(\1[ \t]+[^\n]*\n)*)",
                        re.MULTILINE)
 
+
 def find_param_docs(docstring):
     """Finds ReStructuredText-style ":param:" lines in the docstring and
     returns a dictionary mapping param names to doc strings.
     """
-    
     paramdocs = {}
     for match in param_exp.finditer(docstring):
         name = match.group(2)
         value = match.group(3)
         paramdocs[name] = value
     return paramdocs
+
 
 def remove_param_docs(docstring):
     """Finds ReStructuredText-style ":param:" lines in the docstring and
@@ -51,7 +52,6 @@ def process_docstring(docstring):
     """Takes a docstring and returns a list of strings representing
     the paragraphs in the docstring.
     """
-    
     lines = docstring.split("\n")
     paras = [[]]
     for line in lines:
@@ -68,7 +68,6 @@ def format_paras(paras, width, indent=0, lstripline=[]):
     """Takes a list of paragraph strings and formats them into a word-wrapped,
     optionally indented string.
     """
-    
     output = []
     for para in paras:
         lines = wrap(para, width - indent)
@@ -83,7 +82,6 @@ def format_paras(paras, width, indent=0, lstripline=[]):
 def totype(v, default):
     """Tries to convert the value 'v' into the same type as 'default'.
     """
-    
     t = type(default)
     if t is int:
         return int(v)
@@ -107,27 +105,26 @@ class CommandError(Exception):
     """General exception for Baker errors, usually related to parsing the
     command line.
     """
-    
     def __init__(self, msg, scriptname, cmd=None):
         Exception.__init__(self, msg)
         self.scriptname = scriptname
         self.commandname = cmd
+
 
 class TopHelp(Exception):
     """Exception raised by Baker.parse() to indicate the user requested the
     overall help for the script, e.g. by typing "script.py help" or
     "script.py --help"
     """
-    
     def __init__(self, scriptname):
         self.scriptname = scriptname
+
 
 class CommandHelp(Exception):
     """Exception raised by baker.parse() to indicate the user requested help
     for a specific command, e.g. by typing "script.py command --help" or
     "script.py help command".
     """
-    
     def __init__(self, scriptname, cmd):
         self.scriptname = scriptname
         self.cmd = cmd
@@ -136,7 +133,6 @@ class CommandHelp(Exception):
 class Cmd(object):
     """Stores metadata about a command.
     """
-    
     def __init__(self, name, fn, argnames, keywords, shortopts,
                  has_varargs, has_kwargs, docstring, paramdocs):
         self.name = name
@@ -154,21 +150,21 @@ class Baker(object):
     def __init__(self):
         self.commands = {}
         self.defaultcommand = None
-    
+
     def command(self, fn=None, name=None, default=False,
                 params=None, shortopts=None):
         """Registers a command with the bakery. This does not call the
         function, it simply adds it to the list of functions this Baker
         knows about.
-        
+
         This method is usually used as a decorator::
-        
+
             b = Baker()
-            
+
             @b.command
             def test():
                 pass
-                
+
         :param fn: the function to register.
         :param name: use this argument to register the command under a
             different name than the function name.
@@ -181,7 +177,6 @@ class Baker(object):
         :param shortopts: a dictionary mapping parameter names to short
             options, e.g. {"verbose": "v"}.
         """
-        
         # This method works as a decorator with or without arguments.
         if fn is None:
             # The decorator was given arguments, e.g. @command(default=True),
@@ -193,15 +188,15 @@ class Baker(object):
                                            shortopts=shortopts)
         else:
             name = name or fn.__name__
-            
+
             # Inspect the argument signature of the function
             arglist, vargsname, kwargsname, keyworddefaults = getargspec(fn)
             has_varargs = bool(vargsname)
             has_kwargs = bool(kwargsname)
-            
+
             # Get the function's docstring
             docstring = fn.__doc__ or ""
-            
+
             # If the user didn't specify parameter help in the decorator
             # arguments, try to get it from parameter annotations (Python 3.x)
             # or RST-style :param: lines in the docstring
@@ -212,44 +207,44 @@ class Baker(object):
                 else:
                     params = find_param_docs(docstring)
                     docstring = remove_param_docs(docstring)
-            
-            # If the user didn't specify 
+
+            # If the user didn't specify
             shortopts = shortopts or {}
-            
+
             # Zip up the keyword argument names with their defaults
             if keyworddefaults:
                 keywords = dict(zip(arglist[0-len(keyworddefaults):], keyworddefaults))
             else:
                 keywords = {}
-            
+
             # If this is a method, remove 'self' from the argument list
             if arglist and arglist[0] == "self":
                 arglist.pop(0)
-            
+
             # Create a Cmd object to represent this command and store it
             cmd = Cmd(name, fn, arglist, keywords, shortopts,
                       has_varargs, has_kwargs,
                       docstring, params)
             self.commands[cmd.name] = cmd
-            
+
             # If default is True, set this as the default command
             if default: self.defaultcommand = cmd
-            
+
             return fn
-    
+
     def usage(self, cmd=None, scriptname=None, exception=None, file=sys.stdout):
         if exception is not None:
             scriptname, cmd = exception.scriptname, exception.cmd
-        
+
         if scriptname is None:
             scriptname = sys.argv[0]
-        
+
         if cmd is None:
             self.print_top_help(scriptname, file=file)
         else:
             if isinstance(cmd, basestring):
                 cmd = self.commands[cmd]
-            
+
             self.print_command_help(scriptname, cmd, file=file)
 
     def openinput(self, filein):
@@ -270,7 +265,6 @@ class Baker(object):
 
         :param iniconffile: the file name of the ini file, defaults to 'script.ini'.
         """
-
         import os
         fp = open(iniconffile, "w")
         for cmdname in self.commands:
@@ -290,14 +284,13 @@ class Baker(object):
 
     def print_top_help(self, scriptname, file=sys.stdout):
         """Prints the documentation for the script and exits.
-        
+
         :param scriptname: the name of the script being executed (argv[0]).
         :param file: the file to write the help to. The default is stdout.
         """
-        
         # Print the basic help for running a command
         file.write("\nUsage: %s COMMAND <options>\n\n" % scriptname)
-        
+
         # Get a sorted list of all command names
         cmdnames = sorted(self.commands.keys())
         if cmdnames:
@@ -305,17 +298,17 @@ class Baker(object):
             # command name and adding 3 (one space before the name and two
             # after)
             rindent = max(len(name) for name in cmdnames) + 3
-            
+
             print("Available commands:\n")
             for cmdname in cmdnames:
                 # Get the Cmd object for this command
                 cmd = self.commands[cmdname]
-                
+
                 # Calculate the padding necessary to fill from the end of the
                 # command name to the documentation margin
                 tab = " " * (rindent - (len(cmdname)+1))
                 file.write(" " + cmdname + tab)
-                
+
                 # Get the paragraphs of the command's docstring
                 paras = process_docstring(cmd.docstring)
                 if paras:
@@ -325,10 +318,10 @@ class Baker(object):
                     file.write("\n")
                 else:
                     file.write("\n")
-            
+
         file.write("\n")
         file.write('Use "%s <command> --help" for individual command help.\n' % scriptname)
-   
+
     def return_cmd_doc(self, cmd):
         # Print the documentation for this command
         paras = process_docstring(cmd.docstring)
@@ -338,7 +331,7 @@ class Baker(object):
             # line)
             for line in format_paras([paras[0]], 76):
                 ret.append(line)
-            
+
             # Print subsequent paragraphs indented by 4 spaces
             if len(paras) > 1:
                 ret.append("")
@@ -361,7 +354,7 @@ class Baker(object):
             rindent = max(len(argname) + 3 for argname in posargs)
             # Pad the headings so they're all as long as the longest one
             heads = [(head, head + (" " * (rindent - len(head))) ) for head in posargs]
-            
+
             # Print the arg docs
             for keyname, head in heads:
                 ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent=rindent)
@@ -399,30 +392,30 @@ class Baker(object):
             ret.append("")
             ret.append("Options:")
             ret.append("")
-            
+
             # Get a list of keyword argument names
             keynames = cmd.keywords.keys()
-            
+
             # Make formatted headings, e.g. " -k --keyword  ", and put them in
             # a list like [(name, heading), ...]
             heads = []
             for keyname in keynames:
                 head = self.return_head(cmd, keyname)
                 heads.append((keyname, head))
-            
+
             if heads:
                 # Find the length of the longest formatted heading
                 rindent = max(len(head) + 2 for keyname, head in heads)
                 # Pad the headings so they're all as long as the longest one
                 heads = [(keyname, head + (" " * (rindent - len(head) - 2)))
                          for keyname, head in heads]
-            
+
                 # Print the option docs
                 for keyname, head in heads:
                     ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent)
 
             ret.append("")
-            
+
             if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
                 ret.append("(specifying a double hyphen (--) in the argument list means all")
                 ret.append("subsequent arguments are treated as bare arguments, not options)")
@@ -431,15 +424,15 @@ class Baker(object):
 
     def print_command_help(self, scriptname, cmd, file=sys.stdout):
         """Prints the documentation for a specific command and exits.
-        
+
         :param scriptname: the name of the script being executed (argv[0]).
         :param cmd: the Cmd object representing the command.
         :param file: the file to write the help to. The default is stdout.
         """
-        
+
         # Print the usage for the command
         file.write("\nUsage: %s %s" % (scriptname, cmd.name))
-        
+
         # Print the required and "optional" arguments (where optional
         # arguments are keyword arguments with default None).
         for name in cmd.argnames:
@@ -449,12 +442,12 @@ class Baker(object):
             else:
                 # This is a keyword/optional argument
                 file.write(" [<%s>]" % name)
-        
+
         if cmd.has_varargs:
             # This command accepts a variable number of positional arguments
             file.write(" [...]")
         file.write("\n\n")
-        
+
         file.write("\n".join(self.return_cmd_doc(cmd)))
 
         file.write("\n".join(self.return_argnames_doc(cmd)))
@@ -462,31 +455,31 @@ class Baker(object):
         file.write("\n".join(self.return_keyword_doc(cmd)))
 
 
-        
+
     def parse_args(self, scriptname, cmd, argv, test=False):
         keywords = cmd.keywords
         shortopts = cmd.shortopts
-        
+
         def type_error(name, value, t):
             if not test:
                 msg = "%s value %r must be %s" % (name, value, t)
                 raise CommandError(msg, scriptname, cmd)
-        
+
         # shortopts maps long option names to characters. To look up short
         # options, we need to create a reverse mapping.
         shortchars = dict((v, k) for k, v in shortopts.iteritems())
-        
+
         # The *vargs list and **kwargs dict to build up from the command line
         # arguments
         vargs = []
         kwargs = {}
-       
+
         doubledashcnt = 0
         singledashcnt = 0
         while argv:
             # Take the next argument
             arg = argv.pop(0)
-            
+
             if arg == "--":
                 doubledashcnt = doubledashcnt + 1
                 assert doubledashcnt == 1
@@ -494,16 +487,16 @@ class Baker(object):
                 # positional arguments
                 vargs.extend(argv)
                 break
-            
+
             elif arg == "-":
                 # sys.stdin
                 singledashcnt = singledashcnt + 1
                 assert singledashcnt == 1
                 vargs.append('-')
-            
+
             elif arg.startswith("--"):
                 # Process long option
-                
+
                 value = None
                 if "=" in arg:
                     # The argument was specified like --keyword=value
@@ -520,7 +513,7 @@ class Baker(object):
                     # The argument was not specified with an equals sign...
                     name = arg[2:]
                     default = keywords.get(name)
-                    
+
                     if type(default) is bool:
                         # If this option is a boolean, it doesn't need a value;
                         # specifying it on the command line means "do the
@@ -535,27 +528,27 @@ class Baker(object):
                             value = True
                         else:
                             value = argv.pop(0)
-                        
+
                         try:
                             value = totype(value, default)
                         except (TypeError, ValueError):
-                            type_error(name, value, type(default)) 
-                
+                            type_error(name, value, type(default))
+
                 # Store this option
                 kwargs[name] = value
-            
+
             elif arg.startswith("-") and cmd.shortopts:
                 # Process short option(s)
-                
+
                 # For each character after the '-'...
                 for i in xrange(1, len(arg)):
                     char = arg[i]
                     if char not in shortchars:
                         continue
-                    
+
                     # Get the long option name corresponding to this char
                     name = shortchars[char]
-                    
+
                     default = keywords[name]
                     if type(default) is bool:
                         # If this option is a boolean, it doesn't need a value;
@@ -573,7 +566,7 @@ class Baker(object):
                             # the rest of the characters must represent the
                             # value (i.e. old-style UNIX option like -Nname)
                             value = arg[i+1:]
-                        
+
                         try:
                             kwargs[name] = totype(value, default)
                         except (TypeError, ValueError):
@@ -583,43 +576,43 @@ class Baker(object):
                 # This doesn't start with "-", so just add it to the list of
                 # positional arguments.
                 vargs.append(arg)
-        
+
         return vargs, kwargs
-    
+
     def parse(self, argv=None):
         """Parses the command and parameters to call from the list of command
         line arguments. Returns a tuple of (scriptname string, Cmd object,
         position arg list, keyword arg dict).
-        
+
         This method will raise TopHelp if the parser finds that the user
         requested the overall script help, and raise CommandHelp if the user
         requested help on a specific command.
-        
+
         :param argv: the list of options passed to the command line (sys.argv).
         """
-        
+
         if argv is None: argv = sys.argv
-        
+
         scriptname = argv[0]
-        
+
         if (len(argv) < 2) or (argv[1] == "-h" or argv[1] == "--help"):
             # Print the documentation for the script
             raise TopHelp(scriptname)
-        
+
         if argv[1] == "help":
             if len(argv) > 2 and argv[2] in self.commands:
                 cmd = self.commands[argv[2]]
                 raise CommandHelp(scriptname, cmd)
             raise TopHelp(scriptname)
-        
+
         if len(argv) > 1 and argv[1] in self.commands:
             # The first argument on the command line (after the script name
             # is the command to run.
             cmd = self.commands[argv[1]]
-            
+
             if len(argv) > 2 and (argv[2] == "-h" or argv[2] == "--help"):
                 raise CommandHelp(scriptname, cmd)
-            
+
             options = argv[2:]
         else:
             # No known command was specified. If there's a default command,
@@ -627,24 +620,24 @@ class Baker(object):
             cmd = self.defaultcommand
             if cmd is None:
                 raise CommandError("No command specified", scriptname)
-            
+
             options = argv[1:]
-        
+
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.
         args, kwargs = self.parse_args(scriptname, cmd, options)
         return (scriptname, cmd, args, kwargs)
-    
+
     def apply(self, scriptname, cmd, args, kwargs):
         """Calls the command function.
         """
-        
+
         # Create a list of positional arguments: arguments that are either
         # required (not in keywords), or where the default is None (taken to be
         # an optional positional argument). This is different from the Python
         # calling convention, which will fill in keyword arguments with extra
         # positional arguments.
-        
+
         # Rearrange the arguments into the order Python expects
         newargs = []
         newkwargs = kwargs.copy()
@@ -663,7 +656,7 @@ class Baker(object):
                     newargs.append(value)
                 elif not name in newkwargs:
                     newkwargs[name] = args.pop(0)
-                
+
             else:
                 #positional arg
                 if name in newkwargs:
@@ -683,23 +676,23 @@ class Baker(object):
             else:
                 raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)),
                                scriptname, cmd)
-                
+
         if not cmd.has_kwargs:
             for k in newkwargs:
                 if k not in cmd.keywords:
                     raise CommandError("Unknown option --%s" % k,
                                        scriptname, cmd)
-        
-        
+
+
         return cmd.fn(*newargs, **newkwargs)
-    
+
     def run(self, argv=None, main=True, help_on_error=False,
             outfile=sys.stdout, errorfile=sys.stderr, helpfile=sys.stdout,
             errorcode=1):
         """Takes a list of command line arguments, parses it into a command
         name and options, and calls the function corresponding to the command
         with the given arguments.
-        
+
         :param argv: the list of options passed to the command line (sys.argv).
         :param main: if True, print error messages and exit instead of
             raising an exception.
@@ -710,7 +703,7 @@ class Baker(object):
         :param errorcode: the exit code to use when calling sys.exit() in the
             case of an error. If this is 0, sys.exit() will not be called.
         """
-        
+
         try:
             value = self.apply(*self.parse(argv))
             if main and value is not None:
@@ -730,16 +723,16 @@ class Baker(object):
                 self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
             if errorcode:
                 sys.exit(errorcode)
-    
+
     def test(self, argv=None):
         """Takes a list of command line arguments, parses it into a command
         name and options, and prints what the resulting function call would
         look like. This may be useful for testing how command line arguments
         would be passed to your functions.
-        
+
         :param argv: the list of options passed to the command line (sys.argv).
         """
-        
+
         try:
             cmd, args, kwargs = self.parse(argv, test=True)
             result = "%s(%s" % (cmd.name, ",".join(repr(a) for a in args))
@@ -752,7 +745,7 @@ class Baker(object):
             print "(top-level help)"
         except CommandHelp, e:
             print "(help for %s command)" % e.cmd.name
-    
+
 
 _baker = Baker()
 command = _baker.command
