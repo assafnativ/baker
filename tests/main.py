@@ -43,7 +43,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["s", "test", "100"], main=False),
                          ("100", False, None))
         self.assertEqual(b.run(["s", "test", "100", "200"], main=False),
-                         ("100", False, "200"))
+                         ("100", "200", None))
         self.assertEqual(b.run(["s", "test", "--b", "100", "200"], main=False),
                          ("100", True, "200"))
     
@@ -90,7 +90,7 @@ class TestBaker(unittest.TestCase):
         from cStringIO import StringIO
         f = StringIO()
         b.usage("test", scriptname="script.py", file=f)
-        self.assertEqual(f.getvalue(), '\nUsage: script.py test\n\nTest command\n\n')
+        self.assertEqual(f.getvalue(), '\nUsage: script.py test\n\nTest command\n')
         
     def test_errors(self):
         b = baker.Baker()
