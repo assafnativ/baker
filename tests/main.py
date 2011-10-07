@@ -10,14 +10,15 @@ class TestBaker(unittest.TestCase):
         def test(a, b, c):
             return (a, b, c)
         self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False), ("1", "2", "3"))
-        
+
     def test_default(self):
         b = baker.Baker()
         @b.command(default=True)
-        def test(a, b, c):
+        def test(a="a", b="b", c="b"):
             return (a, b, c)
         self.assertEqual(b.run(["s", "1", "2", "3"], main=False), ("1", "2", "3"))
-    
+        self.assertEqual(b.run(["s"], main=False), ("a", "b", "c"))
+
     def test_options(self):
         b = baker.Baker()
         @b.command

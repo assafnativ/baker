@@ -595,6 +595,9 @@ class Baker(object):
 
         scriptname = argv[0]
 
+        if len(argv) < 2 and self.defaultcommand:
+            argv.append(self.defaultcommand.name)
+
         if (len(argv) < 2) or (argv[1] == "-h" or argv[1] == "--help"):
             # Print the documentation for the script
             raise TopHelp(scriptname)
