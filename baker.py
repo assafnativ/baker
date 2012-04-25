@@ -579,7 +579,7 @@ class Baker(object):
 
         return vargs, kwargs
 
-    def parse(self, argv=None):
+    def parse(self, argv=None, test=False):
         """Parses the command and parameters to call from the list of command
         line arguments. Returns a tuple of (scriptname string, Cmd object,
         position arg list, keyword arg dict).
@@ -628,7 +628,7 @@ class Baker(object):
 
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.
-        args, kwargs = self.parse_args(scriptname, cmd, options)
+        args, kwargs = self.parse_args(scriptname, cmd, options, test=test)
         return (scriptname, cmd, args, kwargs)
 
     def apply(self, scriptname, cmd, args, kwargs):
@@ -661,7 +661,7 @@ class Baker(object):
                     newkwargs[name] = args.pop(0)
 
             else:
-                #positional arg
+                # positional arg
                 if name in newkwargs:
                     newargs.append(newkwargs[name])
                     del newkwargs[name]
@@ -737,13 +737,14 @@ class Baker(object):
         """
 
         try:
-            cmd, args, kwargs = self.parse(argv, test=True)
+            script, cmd, args, kwargs = self.parse(argv, test=True)
             result = "%s(%s" % (cmd.name, ",".join(repr(a) for a in args))
             if kwargs:
                 kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
                 result += ", " + kws
             result += ")"
             print result
+            return result  # useful for testing
         except TopHelp:
             print "(top-level help)"
         except CommandHelp, e:

@@ -14,7 +14,7 @@ class TestBaker(unittest.TestCase):
     def test_default(self):
         b = baker.Baker()
         @b.command(default=True)
-        def test(a="a", b="b", c="b"):
+        def test(a="a", b="b", c="c"):
             return (a, b, c)
         self.assertEqual(b.run(["s", "1", "2", "3"], main=False), ("1", "2", "3"))
         self.assertEqual(b.run(["s"], main=False), ("a", "b", "c"))
@@ -63,7 +63,7 @@ class TestBaker(unittest.TestCase):
         def noargs():
             return 123
         
-        b.run(["script.py", "noargs"], main=False)
+        self.assertEqual(b.run(["script.py", "noargs"], main=False), 123)
         
     def test_alias(self):
         b = baker.Baker()
@@ -71,16 +71,17 @@ class TestBaker(unittest.TestCase):
         def trackall(workaround=None):
             return 123
 
-        b.run(["script.py", "track-all"], main=False)
+        self.assertEqual(b.run(["script.py", "track-all"], main=False), 123)
 
     def test_nooptional(self):
         b = baker.Baker()
         @b.command
         def test(a, b, c):
-            return (a, b, c)
+            return a, b, c
 
-        b.run(["script.py", "test", "1", "2", "3"], main=False)
-        
+        self.assertEqual(b.run(["script.py", "test", "1", "2", "3"],
+                               main=False), ('1', '2', '3'))
+
     def test_usage(self):
         b = baker.Baker()
         @b.command
