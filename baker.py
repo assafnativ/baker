@@ -710,7 +710,7 @@ class Baker(object):
         try:
             value = self.apply(*self.parse(argv))
             if main and value is not None:
-                print value
+                outfile.write(str(value) + '\n')
             return value
         except TopHelp, e:
             if not main: raise
@@ -727,13 +727,14 @@ class Baker(object):
             if errorcode:
                 sys.exit(errorcode)
 
-    def test(self, argv=None):
+    def test(self, argv=None, file=sys.stdout):
         """Takes a list of command line arguments, parses it into a command
         name and options, and prints what the resulting function call would
         look like. This may be useful for testing how command line arguments
         would be passed to your functions.
 
         :param argv: the list of options passed to the command line (sys.argv).
+        :param file: the file to write result to.
         """
 
         try:
@@ -743,12 +744,12 @@ class Baker(object):
                 kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
                 result += ", " + kws
             result += ")"
-            print result
+            file.write(result)
             return result  # useful for testing
         except TopHelp:
-            print "(top-level help)"
+            file.write("(top-level help)")
         except CommandHelp, e:
-            print "(help for %s command)" % e.cmd.name
+            file.write("(help for %s command)" % e.cmd.name)
 
 
 _baker = Baker()
