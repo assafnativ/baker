@@ -299,7 +299,7 @@ class Baker(object):
             # after)
             rindent = max(len(name) for name in cmdnames) + 3
 
-            print("Available commands:\n")
+            file.write("Available commands:\n")
             for cmdname in cmdnames:
                 # Get the Cmd object for this command
                 cmd = self.commands[cmdname]
