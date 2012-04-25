@@ -82,6 +82,14 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["script.py", "test", "1", "2", "3"],
                                main=False), ('1', '2', '3'))
 
+    def test_test(self):
+        b = baker.Baker()
+        @b.command
+        def test(a, b):
+            return a, b
+
+        self.assertEqual(b.test(["s", "test", "1", "2"]), "test('1', '2')")
+
     def test_usage(self):
         b = baker.Baker()
         @b.command

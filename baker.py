@@ -738,7 +738,7 @@ class Baker(object):
 
         try:
             script, cmd, args, kwargs = self.parse(argv, test=True)
-            result = "%s(%s" % (cmd.name, ",".join(repr(a) for a in args))
+            result = "%s(%s" % (cmd.name, ", ".join(repr(a) for a in args))
             if kwargs:
                 kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
                 result += ", " + kws
