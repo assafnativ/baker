@@ -8,6 +8,38 @@ except ImportError:  # python 3
 import baker
 
 
+class TestFunctions(unittest.TestCase):
+
+    def test_totype(self):
+        candidates = {("true", "yes", "on", "1"): True,
+                      ("false", "no", "off", "0"): False}
+        for values, expected in candidates.items():
+            for value in values:
+                self.assertEqual(baker.totype(value, True), expected)
+                self.assertEqual(baker.totype(value, False), expected)
+        self.assertEqual(baker.totype("1", 42), 1)
+        self.assertEqual(baker.totype("1", 0.0), 1.0)
+        self.assertEqual(baker.totype("1", baker.Baker()), "1")
+        self.assertRaises(TypeError, baker.totype, "invalid", False)
+
+    def test_docstrings(self):
+        docstring = """This is an example docstring.
+
+        :param add: Add a line.
+        :param remove: Remove a line.
+        """
+
+        self.assertEqual(baker.find_param_docs(docstring),
+                         {"add": "Add a line.\n",
+                          "remove": "Remove a line.\n"})
+        self.assertEqual(baker.remove_param_docs(docstring),
+                         "This is an example docstring.\n\n" + " " * 8)
+        self.assertEqual(baker.process_docstring(docstring),
+                         ["This is an example docstring.",
+                          ":param add: Add a line. " \
+                          ":param remove: Remove a line."])
+
+
 class TestBaker(unittest.TestCase):
 
     def assertEqual(self, a, b):
@@ -23,6 +55,22 @@ class TestBaker(unittest.TestCase):
             return (a, b, c)
         self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False),
                          ("1", "2", "3"))
+
+    def test_method(self):
+        b = baker.Baker()
+
+        class Test(object):
+
+            def __init__(self, start):
+                self.start = start
+
+            @b.command
+            def test(self, a, b, cmd=False):
+                return self.start, a, b, cmd
+
+        test = Test(42)
+        self.assertEqual(b.run(["s", "test", "1", "2", "--cmd"], instance=test),
+                         (42, "1", "2", True))
 
     def test_default(self):
         b = baker.Baker()

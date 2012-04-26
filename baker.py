@@ -19,6 +19,7 @@ import os
 import sys
 import gzip
 import bz2
+from collections import namedtuple
 from inspect import getargspec
 from textwrap import wrap
 
@@ -26,14 +27,19 @@ if sys.version_info[:2] < (3, 0):
     range = xrange
 
 
+# Stores metadata about a command
+Cmd = namedtuple("Cmd", ["name", "fn", "argnames", "keywords", "shortopts",
+                         "has_varargs", "has_kwargs", "docstring",
+                         "paramdocs", "is_method"])
+
+param_exp = re.compile(r"^([\t ]*):param (.*?): ([^\n]*\n(\1[ \t]+[^\n]*\n)*)",
+                       re.MULTILINE)
+
+
 def normalize_docstring(docstring):
     """Normalizes whitespace in the given string.
     """
     return re.sub(r"[\r\n\t ]+", " ", docstring).strip()
-
-
-param_exp = re.compile(r"^([\t ]*):param (.*?): ([^\n]*\n(\1[ \t]+[^\n]*\n)*)",
-                       re.MULTILINE)
 
 
 def find_param_docs(docstring):
@@ -66,8 +72,7 @@ def process_docstring(docstring):
             paras.append([])
         else:
             paras[-1].append(line)
-    paras = [normalize_docstring(" ".join(ls))
-             for ls in paras if ls]
+    paras = [normalize_docstring(" ".join(ls)) for ls in paras if ls]
     return paras
 
 
@@ -130,22 +135,6 @@ class CommandHelp(Exception):
     def __init__(self, scriptname, cmd):
         self.scriptname = scriptname
         self.cmd = cmd
-
-
-class Cmd(object):
-    """Stores metadata about a command.
-    """
-    def __init__(self, name, fn, argnames, keywords, shortopts,
-                 has_varargs, has_kwargs, docstring, paramdocs):
-        self.name = name
-        self.fn = fn
-        self.argnames = argnames
-        self.keywords = keywords
-        self.shortopts = shortopts
-        self.has_varargs = has_varargs
-        self.has_kwargs = has_kwargs
-        self.docstring = docstring
-        self.paramdocs = paramdocs
 
 
 class Baker(object):
@@ -220,14 +209,15 @@ class Baker(object):
                 keywords = {}
 
             # If this is a method, remove 'self' from the argument list
+            is_method = False
             if arglist and arglist[0] == "self":
+                is_method = True
                 arglist.pop(0)
 
             # Create a Cmd object to represent this command and store it
-            cmd = Cmd(name, fn, arglist, keywords, shortopts,
-                      has_varargs, has_kwargs,
-                      docstring, params)
-            self.commands[cmd.name] = cmd
+            cmd = Cmd(name, fn, arglist, keywords, shortopts, has_varargs,
+                      has_kwargs, docstring, params, is_method)
+            self.commands[name] = cmd
 
             # If default is True, set this as the default command
             if default:
@@ -649,7 +639,7 @@ class Baker(object):
         args, kwargs = self.parse_args(scriptname, cmd, options, test=test)
         return (scriptname, cmd, args, kwargs)
 
-    def apply(self, scriptname, cmd, args, kwargs):
+    def apply(self, scriptname, cmd, args, kwargs, instance=None):
         """Calls the command function.
         """
 
@@ -706,11 +696,13 @@ class Baker(object):
                     raise CommandError("Unknown option --%s" % k,
                                        scriptname, cmd)
 
+        if cmd.is_method and instance is not None:
+            return cmd.fn(instance, *newargs, **newkwargs)
         return cmd.fn(*newargs, **newkwargs)
 
     def run(self, argv=None, main=True, help_on_error=False,
             outfile=sys.stdout, errorfile=sys.stderr, helpfile=sys.stdout,
-            errorcode=1):
+            errorcode=1, instance=None):
         """Takes a list of command line arguments, parses it into a command
         name and options, and calls the function corresponding to the command
         with the given arguments.
@@ -727,7 +719,7 @@ class Baker(object):
         """
 
         try:
-            value = self.apply(*self.parse(argv))
+            value = self.apply(*self.parse(argv), instance=instance)
             if main and value is not None:
                 self.write(outfile, str(value) + '\n')
             return value
