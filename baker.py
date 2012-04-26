@@ -341,7 +341,6 @@ class Baker(object):
         return ret
 
     def return_argnames_doc(self, cmd):
-        # Added by abhikshah@gmail.com, 5/6/2010
         # Return documentation for required arguments
         ret = []
         posargs = [a for a in cmd.argnames if a not in cmd.keywords]
@@ -353,12 +352,13 @@ class Baker(object):
             # Find the length of the longest formatted heading
             rindent = max(len(argname) + 3 for argname in posargs)
             # Pad the headings so they're all as long as the longest one
-            heads = [(head, head + (" " * (rindent - len(head))) ) for head in posargs]
+            heads = [(head, head + (" " * (rindent - len(head)))) for head in posargs]
 
             # Print the arg docs
             for keyname, head in heads:
                 ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent=rindent)
         ret.append("")
+        print ret, heads
         return ret
 
     def return_individual_keyword_doc(self, cmd, keyname, head, rindent=None):
@@ -449,9 +449,7 @@ class Baker(object):
         file.write("\n\n")
 
         file.write("\n".join(self.return_cmd_doc(cmd)))
-
         file.write("\n".join(self.return_argnames_doc(cmd)))
-
         file.write("\n".join(self.return_keyword_doc(cmd)))
 
 
@@ -712,13 +710,13 @@ class Baker(object):
             if main and value is not None:
                 outfile.write(str(value) + '\n')
             return value
-        except TopHelp, e:
+        except TopHelp as e:
             if not main: raise
             self.usage(scriptname=e.scriptname, file=helpfile)
-        except CommandHelp, e:
+        except CommandHelp as e:
             if not main: raise
             self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
-        except CommandError, e:
+        except CommandError as e:
             if not main: raise
             errorfile.write(str(e) + "\n")
             if help_on_error:
@@ -748,7 +746,7 @@ class Baker(object):
             return result  # useful for testing
         except TopHelp:
             file.write("(top-level help)")
-        except CommandHelp, e:
+        except CommandHelp as e:
             file.write("(help for %s command)" % e.cmd.name)
 
 
