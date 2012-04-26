@@ -8,6 +8,34 @@ except ImportError:  # python 3
 import baker
 
 
+MAIN_HELP = """
+Usage: script.py COMMAND <options>
+
+Available commands:
+ main  
+ open  Open a URL.
+
+Use 'script.py <command> --help' for individual command help.
+"""
+
+COMMAND_HELP = """
+Usage: script.py open <url> [<xml>] [<json>]
+
+Open a URL.
+
+Required Arguments:
+
+  url   url to open.
+
+Options:
+
+   --xml   use it if you want an xml output.
+   --json  use it if you want a json output.
+
+(specifying a double hyphen (--) in the argument list means all
+subsequent arguments are treated as bare arguments, not options)
+"""
+
 class TestFunctions(unittest.TestCase):
 
     def test_totype(self):
@@ -176,6 +204,31 @@ class TestBaker(unittest.TestCase):
         b.usage("test", scriptname="script.py", file=f)
         self.assertEqual(f.getvalue(),
                          '\nUsage: script.py test\n\nTest command\n')
+
+    def test_help(self):
+        b = baker.Baker()
+
+        @b.command(default=True)
+        def main(auth=False, port=8888):
+            return auth, port
+
+        @b.command
+        def open(url, xml=False, json=False):
+            """
+            Open a URL.
+
+            :param url: url to open.
+            :param xml: use it if you want an xml output.
+            :param json: use it if you want a json output.
+            """
+            return url, xml, json
+
+        out = StringIO()
+        b.run(["script.py", "--help"], helpfile=out)
+        self.assertEqual(out.getvalue(), MAIN_HELP)
+        out = StringIO()
+        b.run(["script.py", "open", "--help"], helpfile=out)
+        self.assertEqual(out.getvalue(), COMMAND_HELP)
 
     def test_errors(self):
         b = baker.Baker()
