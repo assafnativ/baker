@@ -261,19 +261,18 @@ class Baker(object):
         fp = open(iniconffile, "w")
         for cmdname in self.commands:
             cmd = self.commands[cmdname]
-            self.write(fp, os.linesep)
-            self.write(fp, "[%s]%s" % (cmdname, os.linesep))
+            self.write(fp, '\n')
+            self.write(fp, "[%s]\n" % (cmdname))
             for line in self.return_cmd_doc(cmd):
-                self.write(fp, "# " + line + os.linesep)
+                self.write(fp, "# " + line + '\n')
             for line in self.return_argnames_doc(cmd):
-                self.write(fp, "# " + line + os.linesep)
+                self.write(fp, "# " + line + '\n')
             for key in cmd.keywords:
                 head = self.return_head(cmd, key)
                 for line in self.return_individual_keyword_doc(cmd, key, head):
-                    self.write(fp, "# " + line + os.linesep)
-                self.write(fp, "%s = %s%s" % (key, cmd.keywords[key],
-                                              os.linesep))
-                self.write(fp, os.linesep)
+                    self.write(fp, "# " + line + '\n')
+                self.write(fp, "%s = %s\n" % (key, cmd.keywords[key]))
+                self.write(fp, '\n')
         fp.close()
 
     def write(self, file, content):
@@ -480,15 +479,15 @@ class Baker(object):
         vargs = []
         kwargs = {}
 
-        doubledashcnt = 0
-        singledashcnt = 0
+        double_dash = 0
+        single_dash = 0
         while argv:
             # Take the next argument
             arg = argv.pop(0)
 
             if arg == "--":
-                doubledashcnt = doubledashcnt + 1
-                assert doubledashcnt == 1
+                double_dash += 1
+                assert double_dash == 1
                 # All arguments following a single hyphen are treated as
                 # positional arguments
                 vargs.extend(argv)
@@ -496,8 +495,8 @@ class Baker(object):
 
             elif arg == "-":
                 # sys.stdin
-                singledashcnt = singledashcnt + 1
-                assert singledashcnt == 1
+                single_dash += 1
+                assert single_dash == 1
                 vargs.append('-')
 
             elif arg.startswith("--"):
