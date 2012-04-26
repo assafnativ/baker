@@ -1,4 +1,4 @@
-#===============================================================================
+#=============================================================================
 # Copyright 2012 Matt Chaput
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#===============================================================================
+#=============================================================================
 
 import re
 import os
@@ -24,6 +24,7 @@ from textwrap import wrap
 
 if sys.version_info[:2] < (3, 0):
     range = xrange
+
 
 def normalize_docstring(docstring):
     """Normalizes whitespace in the given string.
@@ -191,7 +192,7 @@ class Baker(object):
             name = name or fn.__name__
 
             # Inspect the argument signature of the function
-            arglist, vargsname, kwargsname, keyworddefaults = getargspec(fn)
+            arglist, vargsname, kwargsname, defaults = getargspec(fn)
             has_varargs = bool(vargsname)
             has_kwargs = bool(kwargsname)
 
@@ -213,8 +214,8 @@ class Baker(object):
             shortopts = shortopts or {}
 
             # Zip up the keyword argument names with their defaults
-            if keyworddefaults:
-                keywords = dict(zip(arglist[0-len(keyworddefaults):], keyworddefaults))
+            if defaults:
+                keywords = dict(zip(arglist[0 - len(defaults):], defaults))
             else:
                 keywords = {}
 
@@ -229,7 +230,8 @@ class Baker(object):
             self.commands[cmd.name] = cmd
 
             # If default is True, set this as the default command
-            if default: self.defaultcommand = cmd
+            if default:
+                self.defaultcommand = cmd
 
             return fn
 
@@ -259,24 +261,30 @@ class Baker(object):
         return open(filein, 'rb')
 
     def writeconfig(self, iniconffile=sys.argv[0] + ".ini"):
-        """OVERWRITES an ini style config file that holds all of the default command line options.
+        """
+        OVERWRITE an ini style config file that holds all of the default
+        command line options.
 
-        :param iniconffile: the file name of the ini file, defaults to 'script.ini'.
+        :param iniconffile: the file name of the ini file, defaults to
+                            '{scriptname}.ini'.
         """
         fp = open(iniconffile, "w")
         for cmdname in self.commands:
             cmd = self.commands[cmdname]
             self.write(fp, os.linesep)
-            self.write(fp, "[{0}]".format(cmdname) + os.linesep)
+            self.write(fp, "[%s]%s" % (cmdname, os.linesep))
             for line in self.return_cmd_doc(cmd):
                 self.write(fp, "# " + line + os.linesep)
             for line in self.return_argnames_doc(cmd):
                 self.write(fp, "# " + line + os.linesep)
             for key in cmd.keywords:
-                for line in self.return_individual_keyword_doc(cmd, key, self.return_head(cmd, key)):
+                head = self.return_head(cmd, key)
+                for line in self.return_individual_keyword_doc(cmd, key, head):
                     self.write(fp, "# " + line + os.linesep)
-                self.write(fp, "{0} = {1}".format(key, cmd.keywords[key]) + os.linesep)
+                self.write(fp, "%s = %s%s" % (key, cmd.keywords[key],
+                                              os.linesep))
                 self.write(fp, os.linesep)
+        fp.close()
 
     def write(self, file, content):
         # This function automatically converts strings to bytes
@@ -290,7 +298,6 @@ class Baker(object):
         except TypeError:
             # With some file content's type must be str, not bytes
             file.write(str(content))
-
 
     def print_top_help(self, scriptname, file=sys.stdout):
         """Prints the documentation for the script and exits.
@@ -316,7 +323,7 @@ class Baker(object):
 
                 # Calculate the padding necessary to fill from the end of the
                 # command name to the documentation margin
-                tab = " " * (rindent - (len(cmdname)+1))
+                tab = " " * (rindent - len(cmdname) - 1)
                 self.write(file, " " + cmdname + tab)
 
                 # Get the paragraphs of the command's docstring
@@ -324,13 +331,14 @@ class Baker(object):
                 if paras:
                     # Print the first paragraph
                     self.write(file, "\n".join(format_paras([paras[0]], 76,
-                                            indent=rindent, lstripline=[0])))
+                                             indent=rindent, lstripline=[0])))
                     self.write(file, "\n")
                 else:
                     self.write(file, "\n")
 
         self.write(file, "\n")
-        self.write(file, 'Use "%s <command> --help" for individual command help.\n' % scriptname)
+        self.write(file, "Use '%s <command> --help' for individual command "
+                   "help.\n" % scriptname)
 
     def return_cmd_doc(self, cmd):
         # Print the documentation for this command
@@ -362,11 +370,12 @@ class Baker(object):
             # Find the length of the longest formatted heading
             rindent = max(len(argname) + 3 for argname in posargs)
             # Pad the headings so they're all as long as the longest one
-            heads = [(head, head + (" " * (rindent - len(head)))) for head in posargs]
+            heads = [(head, head.ljust(rindent)) for head in posargs]
 
             # Print the arg docs
             for keyname, head in heads:
-                ret += self.return_individual_keyword_doc(cmd, keyname, head, rindent=rindent)
+                ret += self.return_individual_keyword_doc(cmd, keyname, head,
+                                                          rindent=rindent)
         ret.append("")
         return ret
 
@@ -420,13 +429,16 @@ class Baker(object):
 
                 # Print the option docs
                 for keyname, head in heads:
-                    ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent)
+                    ret += self.return_individual_keyword_doc(cmd, keyname,
+                                                              head, rindent)
 
             ret.append("")
 
             if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
-                ret.append("(specifying a double hyphen (--) in the argument list means all")
-                ret.append("subsequent arguments are treated as bare arguments, not options)")
+                ret.append("(specifying a double hyphen (--) in the argument"
+                           " list means all")
+                ret.append("subsequent arguments are treated as bare "
+                           "arguments, not options)")
                 ret.append("")
         return ret
 
@@ -459,8 +471,6 @@ class Baker(object):
         self.write(file, "\n".join(self.return_cmd_doc(cmd)))
         self.write(file, "\n".join(self.return_argnames_doc(cmd)))
         self.write(file, "\n".join(self.return_keyword_doc(cmd)))
-
-
 
     def parse_args(self, scriptname, cmd, argv, test=False):
         keywords = cmd.keywords
@@ -507,7 +517,8 @@ class Baker(object):
                 if "=" in arg:
                     # The argument was specified like --keyword=value
                     name, value = arg[2:].split("=", 1)
-                    # strip quotes if value is quoted (--keyword='multiple words')
+                    # strip quotes if value is quoted like
+                    # --keyword='multiple words'
                     value = value.strip('\'"')
 
                     default = keywords.get(name)
@@ -597,7 +608,8 @@ class Baker(object):
         :param argv: the list of options passed to the command line (sys.argv).
         """
 
-        if argv is None: argv = sys.argv
+        if argv is None:
+            argv = sys.argv
 
         scriptname = argv[0]
 
@@ -654,10 +666,11 @@ class Baker(object):
             if name in cmd.keywords:
                 if not args:
                     break
-                #keyword arg
+                # keyword arg
                 if cmd.has_varargs:
-                    #keyword params are not replaced by bare args if the func also has varags
-                    #but they must be specified as positional args for proper processing of varargs
+                    # keyword params are not replaced by bare args if the func
+                    # also has varags but they must be specified as positional
+                    # args for proper processing of varargs
                     value = cmd.keywords[name]
                     if name in newkwargs:
                         value = newkwargs[name]
@@ -675,23 +688,23 @@ class Baker(object):
                     if args:
                         newargs.append(args.pop(0))
                     else:
-                        # This argument is required but we don't have a bare arg to
-                        # fill it
-                        raise CommandError("Required argument '%s' not given" % name,
-                                           scriptname, cmd)
+                        # This argument is required but we don't have a bare
+                        # arg to fill it
+                        msg = "Required argument %r not given"
+                        raise CommandError(msg % (name), scriptname, cmd)
         if args:
             if cmd.has_varargs:
                 newargs.extend(args)
             else:
-                raise CommandError("Too many arguments to %s: %s" % (cmd.name, " ".join(args)),
-                               scriptname, cmd)
+                msg = "Too many arguments to %s: %s"
+                raise CommandError(msg % (cmd.name, " ".join(args)),
+                                   scriptname, cmd)
 
         if not cmd.has_kwargs:
             for k in newkwargs:
                 if k not in cmd.keywords:
                     raise CommandError("Unknown option --%s" % k,
                                        scriptname, cmd)
-
 
         return cmd.fn(*newargs, **newkwargs)
 
@@ -719,13 +732,16 @@ class Baker(object):
                 self.write(outfile, str(value) + '\n')
             return value
         except TopHelp as e:
-            if not main: raise
+            if not main:
+                raise
             self.usage(scriptname=e.scriptname, file=helpfile)
         except CommandHelp as e:
-            if not main: raise
+            if not main:
+                raise
             self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
         except CommandError as e:
-            if not main: raise
+            if not main:
+                raise
             self.write(errorfile, str(e) + "\n")
             if help_on_error:
                 self.write(errorfile, "\n")
@@ -747,7 +763,7 @@ class Baker(object):
             script, cmd, args, kwargs = self.parse(argv, test=True)
             result = "%s(%s" % (cmd.name, ", ".join(repr(a) for a in args))
             if kwargs:
-                kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
+                kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.items())
                 result += ", " + kws
             result += ")"
             self.write(file, result)
@@ -765,14 +781,3 @@ test = _baker.test
 usage = _baker.usage
 writeconfig = _baker.writeconfig
 openinput = _baker.openinput
-
-
-if __name__ == "__main__":
-    pass
-
-
-
-
-
-
-
