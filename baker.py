@@ -356,25 +356,23 @@ class Baker(object):
 
             # Print the arg docs
             for keyname, head in heads:
-                ret = ret + self.return_individual_keyword_doc(cmd, keyname, head, rindent=rindent)
+                ret += self.return_individual_keyword_doc(cmd, keyname, head, rindent=rindent)
         ret.append("")
-        print ret, heads
         return ret
 
     def return_individual_keyword_doc(self, cmd, keyname, head, rindent=None):
         # Return documentation for optional arguments
         ret = []
-        if rindent == None:
+        if rindent is None:
             rindent = len(head) + 2
         if keyname in cmd.paramdocs:
             paras = process_docstring(cmd.paramdocs.get(keyname, ""))
-            for cnt, line in enumerate(format_paras(paras, 76, indent=rindent, lstripline=[0])):
-                if cnt == 0:
-                    ret.append("  " + head + line)
-                else:
-                    ret.append("  " + line)
+            formatted = format_paras(paras, 76, indent=rindent, lstripline=[0])
+            ret.append("  " + head + formatted[0])
+            for line in formatted[1:]:
+                ret.append("  " + line)
         else:
-            ret.append("")
+            ret.append("  " + head)
         return ret
 
     def return_head(self, cmd, keyname):
