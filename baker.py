@@ -1,5 +1,5 @@
 #===============================================================================
-# Copyright 2010 Matt Chaput
+# Copyright 2012 Matt Chaput
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,16 @@
 # limitations under the License.
 #===============================================================================
 
-import re, sys
+import re
+import os
+import sys
+import gzip
+import bz2
 from inspect import getargspec
 from textwrap import wrap
 
+if sys.version_info[:2] < (3, 0):
+    range = xrange
 
 def normalize_docstring(docstring):
     """Normalizes whitespace in the given string.
@@ -82,23 +88,18 @@ def format_paras(paras, width, indent=0, lstripline=[]):
 def totype(v, default):
     """Tries to convert the value 'v' into the same type as 'default'.
     """
-    t = type(default)
-    if t is int:
-        return int(v)
-    elif t is float:
-        return float(v)
-    elif t is long:
-        return long(v)
-    elif t is bool:
+    if isinstance(default, bool):
         lv = v.lower()
         if lv in ("true", "yes", "on", "1"):
             return True
         elif lv in ("false", "no", "off", "0"):
             return False
-        else:
-            raise TypeError
-    else:
-        return v
+        raise TypeError
+    elif isinstance(default, int):
+        return int(v)
+    elif isinstance(default, float):
+        return float(v)
+    return v
 
 
 class CommandError(Exception):
@@ -242,7 +243,7 @@ class Baker(object):
         if cmd is None:
             self.print_top_help(scriptname, file=file)
         else:
-            if isinstance(cmd, basestring):
+            if isinstance(cmd, str):
                 cmd = self.commands[cmd]
 
             self.print_command_help(scriptname, cmd, file=file)
@@ -250,13 +251,10 @@ class Baker(object):
     def openinput(self, filein):
         if filein == '-':
             return sys.stdin
-        import os.path
         ext = os.path.splitext(filein)[1]
         if ext in ['.gz', '.GZ']:
-            import gzip
             return gzip.open(filein, 'rb')
         if ext in ['.bz', '.bz2']:
-            import bz2
             return bz2.BZ2File(filein, 'rb')
         return open(filein, 'rb')
 
@@ -265,21 +263,33 @@ class Baker(object):
 
         :param iniconffile: the file name of the ini file, defaults to 'script.ini'.
         """
-        import os
         fp = open(iniconffile, "w")
         for cmdname in self.commands:
             cmd = self.commands[cmdname]
-            fp.write(os.linesep)
-            fp.write("[{0}]".format(cmdname) + os.linesep)
+            self.write(fp, os.linesep)
+            self.write(fp, "[{0}]".format(cmdname) + os.linesep)
             for line in self.return_cmd_doc(cmd):
-                fp.write("# " + line + os.linesep)
+                self.write(fp, "# " + line + os.linesep)
             for line in self.return_argnames_doc(cmd):
-                fp.write("# " + line + os.linesep)
+                self.write(fp, "# " + line + os.linesep)
             for key in cmd.keywords:
                 for line in self.return_individual_keyword_doc(cmd, key, self.return_head(cmd, key)):
-                    fp.write("# " + line + os.linesep)
-                fp.write("{0} = {1}".format(key, cmd.keywords[key]) + os.linesep)
-                fp.write(os.linesep)
+                    self.write(fp, "# " + line + os.linesep)
+                self.write(fp, "{0} = {1}".format(key, cmd.keywords[key]) + os.linesep)
+                self.write(fp, os.linesep)
+
+    def write(self, file, content):
+        # This function automatically converts strings to bytes
+        # if running under Python 3. Otherwise we cannot write
+        # to a file.
+
+        if sys.version_info[:2] >= (3, 0):
+            content = bytes(content, 'utf-8')
+        try:
+            file.write(content)
+        except TypeError:
+            # With some file content's type must be str, not bytes
+            file.write(str(content))
 
 
     def print_top_help(self, scriptname, file=sys.stdout):
@@ -289,7 +299,7 @@ class Baker(object):
         :param file: the file to write the help to. The default is stdout.
         """
         # Print the basic help for running a command
-        file.write("\nUsage: %s COMMAND <options>\n\n" % scriptname)
+        self.write(file, "\nUsage: %s COMMAND <options>\n\n" % scriptname)
 
         # Get a sorted list of all command names
         cmdnames = sorted(self.commands.keys())
@@ -299,7 +309,7 @@ class Baker(object):
             # after)
             rindent = max(len(name) for name in cmdnames) + 3
 
-            file.write("Available commands:\n")
+            self.write(file, "Available commands:\n")
             for cmdname in cmdnames:
                 # Get the Cmd object for this command
                 cmd = self.commands[cmdname]
@@ -307,20 +317,20 @@ class Baker(object):
                 # Calculate the padding necessary to fill from the end of the
                 # command name to the documentation margin
                 tab = " " * (rindent - (len(cmdname)+1))
-                file.write(" " + cmdname + tab)
+                self.write(file, " " + cmdname + tab)
 
                 # Get the paragraphs of the command's docstring
                 paras = process_docstring(cmd.docstring)
                 if paras:
                     # Print the first paragraph
-                    file.write("\n".join(format_paras([paras[0]], 76,
+                    self.write(file, "\n".join(format_paras([paras[0]], 76,
                                             indent=rindent, lstripline=[0])))
-                    file.write("\n")
+                    self.write(file, "\n")
                 else:
-                    file.write("\n")
+                    self.write(file, "\n")
 
-        file.write("\n")
-        file.write('Use "%s <command> --help" for individual command help.\n' % scriptname)
+        self.write(file, "\n")
+        self.write(file, 'Use "%s <command> --help" for individual command help.\n' % scriptname)
 
     def return_cmd_doc(self, cmd):
         # Print the documentation for this command
@@ -429,26 +439,26 @@ class Baker(object):
         """
 
         # Print the usage for the command
-        file.write("\nUsage: %s %s" % (scriptname, cmd.name))
+        self.write(file, "\nUsage: %s %s" % (scriptname, cmd.name))
 
         # Print the required and "optional" arguments (where optional
         # arguments are keyword arguments with default None).
         for name in cmd.argnames:
             if name not in cmd.keywords:
                 # This is a positional argument
-                file.write(" <%s>" % name)
+                self.write(file, " <%s>" % name)
             else:
                 # This is a keyword/optional argument
-                file.write(" [<%s>]" % name)
+                self.write(file, " [<%s>]" % name)
 
         if cmd.has_varargs:
             # This command accepts a variable number of positional arguments
-            file.write(" [...]")
-        file.write("\n\n")
+            self.write(file, " [...]")
+        self.write(file, "\n\n")
 
-        file.write("\n".join(self.return_cmd_doc(cmd)))
-        file.write("\n".join(self.return_argnames_doc(cmd)))
-        file.write("\n".join(self.return_keyword_doc(cmd)))
+        self.write(file, "\n".join(self.return_cmd_doc(cmd)))
+        self.write(file, "\n".join(self.return_argnames_doc(cmd)))
+        self.write(file, "\n".join(self.return_keyword_doc(cmd)))
 
 
 
@@ -463,7 +473,7 @@ class Baker(object):
 
         # shortopts maps long option names to characters. To look up short
         # options, we need to create a reverse mapping.
-        shortchars = dict((v, k) for k, v in shortopts.iteritems())
+        shortchars = dict((v, k) for k, v in shortopts.items())
 
         # The *vargs list and **kwargs dict to build up from the command line
         # arguments
@@ -537,7 +547,7 @@ class Baker(object):
                 # Process short option(s)
 
                 # For each character after the '-'...
-                for i in xrange(1, len(arg)):
+                for i in range(1, len(arg)):
                     char = arg[i]
                     if char not in shortchars:
                         continue
@@ -553,7 +563,7 @@ class Baker(object):
                         kwargs[name] = not default
                     else:
                         # This option requires a value...
-                        if i == len(arg)-1:
+                        if i == len(arg) - 1:
                             # This is the last character in the list, so the
                             # next argument on the command line is the value.
                             value = argv.pop(0)
@@ -561,7 +571,7 @@ class Baker(object):
                             # There are other characters after this one, so
                             # the rest of the characters must represent the
                             # value (i.e. old-style UNIX option like -Nname)
-                            value = arg[i+1:]
+                            value = arg[i + 1:]
 
                         try:
                             kwargs[name] = totype(value, default)
@@ -706,7 +716,7 @@ class Baker(object):
         try:
             value = self.apply(*self.parse(argv))
             if main and value is not None:
-                outfile.write(str(value) + '\n')
+                self.write(outfile, str(value) + '\n')
             return value
         except TopHelp as e:
             if not main: raise
@@ -716,9 +726,9 @@ class Baker(object):
             self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
         except CommandError as e:
             if not main: raise
-            errorfile.write(str(e) + "\n")
+            self.write(errorfile, str(e) + "\n")
             if help_on_error:
-                errorfile.write("\n")
+                self.write(errorfile, "\n")
                 self.usage(e.cmd, scriptname=e.scriptname, file=helpfile)
             if errorcode:
                 sys.exit(errorcode)
@@ -740,12 +750,12 @@ class Baker(object):
                 kws = ", ".join("%s=%r" % (k, v) for k, v in kwargs.iteritems())
                 result += ", " + kws
             result += ")"
-            file.write(result)
+            self.write(file, result)
             return result  # useful for testing
         except TopHelp:
-            file.write("(top-level help)")
+            self.write(file, "(top-level help)")
         except CommandHelp as e:
-            file.write("(help for %s command)" % e.cmd.name)
+            self.write(file, "(help for %s command)" % e.cmd.name)
 
 
 _baker = Baker()

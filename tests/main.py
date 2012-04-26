@@ -1,9 +1,20 @@
 import unittest
+import sys
+try:
+    from cStringIO import StringIO
+except ImportError:  # python 3
+    from io import BytesIO as StringIO
 
 import baker
 
 
 class TestBaker(unittest.TestCase):
+
+    def assertEqual(self, a, b):
+        if sys.version_info[:2] >= (3, 0) and isinstance(a, bytes):
+            b = bytes(b, 'utf-8')
+        super(TestBaker, self).assertEqual(a, b)
+
     def test_simple(self):
         b = baker.Baker()
         @b.command
@@ -97,7 +108,6 @@ class TestBaker(unittest.TestCase):
             "Test command"
             pass
         
-        from cStringIO import StringIO
         f = StringIO()
         b.usage("test", scriptname="script.py", file=f)
         self.assertEqual(f.getvalue(), '\nUsage: script.py test\n\nTest command\n')
