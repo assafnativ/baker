@@ -1,5 +1,8 @@
-import unittest
+import os
 import sys
+import shutil
+import tempfile
+import unittest
 try:
     from cStringIO import StringIO
 except ImportError:  # python 3
@@ -19,7 +22,7 @@ Use 'script.py <command> --help' for individual command help.
 """
 
 COMMAND_HELP = """
-Usage: script.py open <url> [<xml>] [<json>]
+Usage: script.py open <url> [<xml>] [<json>] [<use>]
 
 Open a URL.
 
@@ -31,10 +34,64 @@ Options:
 
    --xml   use it if you want an xml output.
    --json  use it if you want a json output.
+   --use   
 
 (specifying a double hyphen (--) in the argument list means all
 subsequent arguments are treated as bare arguments, not options)
 """
+
+INPUT_TEST = """This is a test.
+
+Testing.
+"""
+
+INI_SAMPLE = """[main]
+# 
+#    --port  
+port = 8888
+
+#    --auth  
+auth = False
+
+[open]
+# Open a URL.
+# 
+# 
+# Required Arguments:
+# 
+#   url   url to open.
+# 
+#    --xml  use it if you want an xml output.
+xml = False
+
+#    --json  use it if you want a json output.
+json = False
+
+#    --use  
+use = True
+"""
+
+
+def build_baker():
+    b = baker.Baker()
+
+    @b.command(default=True)
+    def main(auth=False, port=8888):
+        return auth, port
+
+    @b.command
+    def open(url, xml=False, json=False, use=True):
+        """
+        Open a URL.
+
+        :param url: url to open.
+        :param xml: use it if you want an xml output.
+        :param json: use it if you want a json output.
+        """
+        return url, xml, json, use
+
+    return b
+
 
 class TestFunctions(unittest.TestCase):
 
@@ -71,8 +128,9 @@ class TestFunctions(unittest.TestCase):
 class TestBaker(unittest.TestCase):
 
     def assertEqual(self, a, b):
-        if sys.version_info[:2] >= (3, 0) and isinstance(a, bytes):
-            b = bytes(b, 'utf-8')
+        if sys.version_info[:2] >= (3, 0):
+            if isinstance(a, bytes):
+                b = bytes(b, 'utf-8')
         super(TestBaker, self).assertEqual(a, b)
 
     def test_simple(self):
@@ -206,29 +264,25 @@ class TestBaker(unittest.TestCase):
                          '\nUsage: script.py test\n\nTest command\n')
 
     def test_help(self):
-        b = baker.Baker()
-
-        @b.command(default=True)
-        def main(auth=False, port=8888):
-            return auth, port
-
-        @b.command
-        def open(url, xml=False, json=False):
-            """
-            Open a URL.
-
-            :param url: url to open.
-            :param xml: use it if you want an xml output.
-            :param json: use it if you want a json output.
-            """
-            return url, xml, json
-
+        b = build_baker()
         out = StringIO()
         b.run(["script.py", "--help"], helpfile=out)
         self.assertEqual(out.getvalue(), MAIN_HELP)
         out = StringIO()
         b.run(["script.py", "open", "--help"], helpfile=out)
         self.assertEqual(out.getvalue(), COMMAND_HELP)
+
+    def test_openinput(self):
+        pass
+
+    def test_writeconfig(self):
+        b = build_baker()
+        tempdir = tempfile.mkdtemp()
+        ini = os.path.join(tempdir, 'conf.ini')
+        b.writeconfig(ini)
+        with open(ini) as fobj:
+            self.assertEqual(fobj.read(), INI_SAMPLE)
+        shutil.rmtree(tempdir)
 
     def test_errors(self):
         b = baker.Baker()

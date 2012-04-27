@@ -258,29 +258,27 @@ class Baker(object):
         :param iniconffile: the file name of the ini file, defaults to
                             '{scriptname}.ini'.
         """
-        fp = open(iniconffile, "w")
-        for cmdname in self.commands:
-            cmd = self.commands[cmdname]
-            self.write(fp, '\n')
-            self.write(fp, "[%s]\n" % (cmdname))
+        ret = []
+        for cmdname, cmd in self.commands.items():
+            ret.append("[%s]" % (cmdname))
             for line in self.return_cmd_doc(cmd):
-                self.write(fp, "# " + line + '\n')
+                ret.append("# " + line)
             for line in self.return_argnames_doc(cmd):
-                self.write(fp, "# " + line + '\n')
+                ret.append("# " + line)
             for key in cmd.keywords:
                 head = self.return_head(cmd, key)
                 for line in self.return_individual_keyword_doc(cmd, key, head):
-                    self.write(fp, "# " + line + '\n')
-                self.write(fp, "%s = %s\n" % (key, cmd.keywords[key]))
-                self.write(fp, '\n')
-        fp.close()
+                    ret.append("# " + line)
+                ret.append("%s = %s\n" % (key, cmd.keywords[key]))
+        with open(iniconffile, 'w+') as fp:
+            self.write(fp, "\n".join(ret), False)
 
-    def write(self, file, content):
+    def write(self, file, content, convert=True):
         # This function automatically converts strings to bytes
         # if running under Python 3. Otherwise we cannot write
         # to a file.
 
-        if sys.version_info[:2] >= (3, 0):
+        if sys.version_info[:2] >= (3, 0) and convert:
             content = bytes(content, 'utf-8')
         try:
             file.write(content)
