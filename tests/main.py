@@ -1,5 +1,7 @@
 import os
 import sys
+import bz2
+import gzip
 import shutil
 import tempfile
 import unittest
@@ -127,10 +129,15 @@ class TestFunctions(unittest.TestCase):
 
 class TestBaker(unittest.TestCase):
 
+    def bytes(self, string, encoding):
+        if sys.version_info[:2] >= (3, 0):
+            return bytes(string, encoding)
+        return string
+
     def assertEqual(self, a, b):
         if sys.version_info[:2] >= (3, 0):
-            if isinstance(a, bytes):
-                b = bytes(b, 'utf-8')
+            if isinstance(a, bytes) and not isinstance(b, bytes):
+                b = self.bytes(b, 'utf-8')
         super(TestBaker, self).assertEqual(a, b)
 
     def test_simple(self):
@@ -273,12 +280,21 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(out.getvalue(), COMMAND_HELP)
 
     def test_openinput(self):
-        pass
+        b = baker.Baker()
+        self.assertTrue(b.openinput('-') is sys.stdin)
+        tempdir = tempfile.mkdtemp()
+        for ext, opener in [(".gz", gzip.GzipFile), (".bz2", bz2.BZ2File)]:
+            g = os.path.join(tempdir, "test" + ext)
+            input = self.bytes(INPUT_TEST, 'utf-8')
+            fobj = opener(g, "w")
+            fobj.write(input)
+            fobj.close()
+            self.assertEqual(b.openinput(g).read(), input)
 
     def test_writeconfig(self):
         b = build_baker()
         tempdir = tempfile.mkdtemp()
-        ini = os.path.join(tempdir, 'conf.ini')
+        ini = os.path.join(tempdir, "conf.ini")
         b.writeconfig(ini)
         with open(ini) as fobj:
             self.assertEqual(fobj.read(), INI_SAMPLE)
