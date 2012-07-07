@@ -163,7 +163,8 @@ class TestBaker(unittest.TestCase):
                 return self.start, a, b, cmd
 
         test = Test(42)
-        self.assertEqual(b.run(["s", "test", "1", "2", "--cmd"], instance=test),
+        self.assertEqual(b.run(["s", "test", "1", "2", "--cmd"],
+                               instance=test),
                          (42, "1", "2", True))
 
     def test_default(self):
@@ -231,7 +232,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["s", "test", "-a", "1", "-b", "2"],
                                main=False),
                          {"a": "1", "b": "2"})
-    
+
     def test_defaulted_args_and_kwargs(self):
         b = baker.Baker()
 
@@ -303,8 +304,10 @@ class TestBaker(unittest.TestCase):
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
-        self.assertRaises(ce, br, ["s", "test", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+                          main=False)
+        self.assertRaises(ce, br, ["s", "test", "1", "--c", "2"],
+                          main=False)
 
     def test_pos_defaulted_arg_and_kwargs(self):
         b = baker.Baker()
@@ -315,13 +318,15 @@ class TestBaker(unittest.TestCase):
 
         self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
                         ("1", "2", {}))
-        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"], main=False),
-                        ("1", "2", {"c":"3"}))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"],
+                               main=False),
+                        ("1", "2", {"c": "3"}))
 
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+                          main=False)
 
     def test_pos_defaulted_arg_args_and_kwargs(self):
         b = baker.Baker()
@@ -344,7 +349,8 @@ class TestBaker(unittest.TestCase):
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+                          main=False)
 
     def test_boolean_arg_and_args(self):
         b = baker.Baker()
@@ -401,7 +407,8 @@ class TestBaker(unittest.TestCase):
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+                          main=False)
         self.assertRaises(ce, br, ["s", "test", "1", "--c", "2"], main=False)
 
     def test_pos_defaulted_arg_and_kwargs(self):
@@ -413,13 +420,15 @@ class TestBaker(unittest.TestCase):
 
         self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
                         ("1", "2", {}))
-        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"], main=False),
-                        ("1", "2", {"c":"3"}))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"],
+                               main=False),
+                        ("1", "2", {"c": "3"}))
 
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+                          main=False)
 
     def test_pos_defaulted_arg_args_and_kwargs(self):
         b = baker.Baker()
@@ -442,7 +451,8 @@ class TestBaker(unittest.TestCase):
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+                          main=False)
 
     def test_boolean_arg_and_args(self):
         b = baker.Baker()
