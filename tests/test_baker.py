@@ -126,10 +126,22 @@ class TestFunctions(unittest.TestCase):
                           ":param add: Add a line. " \
                           ":param remove: Remove a line."])
 
+    def test_openinput(self):
+        self.assertTrue(baker.openinput('-') is sys.stdin)
+        tempdir = tempfile.mkdtemp()
+        for ext, opener in [(".gz", gzip.GzipFile), (".bz2", bz2.BZ2File)]:
+            g = os.path.join(tempdir, "test" + ext)
+            input = TestBaker.bytes(INPUT_TEST, 'utf-8')
+            fobj = opener(g, "w")
+            fobj.write(input)
+            fobj.close()
+            self.assertEqual(baker.openinput(g).read(), input)
+
 
 class TestBaker(unittest.TestCase):
 
-    def bytes(self, string, encoding):
+    @staticmethod
+    def bytes(string, encoding):
         if sys.version_info[:2] >= (3, 0):
             return bytes(string, encoding)
         return string
@@ -437,12 +449,10 @@ class TestBaker(unittest.TestCase):
         def test(a, b="0", *args, **kwargs):
             return (a, b, args, kwargs)
 
+        self.assertEqual(b.run(["s", "test", "1", "2"], main=False),
+                        ("1", "0", ("2",), {}))
         self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
                         ("1", "2", (), {}))
-        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
-                        ("1", "2", (), {}))
-        self.assertEqual(b.run(["s", "test", "2", "1"], main=False),
-                        ("2", "0", ("1",), {}))
         self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False),
                         ("1", "0", ("2", "3",), {}))
         self.assertEqual(b.run(["s", "test", "1", "--c", "2"], main=False),
@@ -516,7 +526,7 @@ class TestBaker(unittest.TestCase):
             pass
 
         f = StringIO()
-        b.usage("test", scriptname="script.py", file=f)
+        b.usage("test", scriptname="script.py", fobj=f)
         self.assertEqual(f.getvalue(),
                          '\nUsage: script.py test\n\nTest command\n')
 
@@ -528,18 +538,6 @@ class TestBaker(unittest.TestCase):
         out = StringIO()
         b.run(["script.py", "open", "--help"], helpfile=out)
         self.assertEqual(out.getvalue(), COMMAND_HELP)
-
-    def test_openinput(self):
-        b = baker.Baker()
-        self.assertTrue(b.openinput('-') is sys.stdin)
-        tempdir = tempfile.mkdtemp()
-        for ext, opener in [(".gz", gzip.GzipFile), (".bz2", bz2.BZ2File)]:
-            g = os.path.join(tempdir, "test" + ext)
-            input = self.bytes(INPUT_TEST, 'utf-8')
-            fobj = opener(g, "w")
-            fobj.write(input)
-            fobj.close()
-            self.assertEqual(b.openinput(g).read(), input)
 
     def test_writeconfig(self):
         b = build_baker()

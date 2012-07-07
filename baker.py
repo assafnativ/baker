@@ -255,6 +255,8 @@ class Baker(object):
 
             # If the user didn't specify
             shortopts = shortopts or {}
+            # Automatically add single letter arguments as shortopts
+            shortopts.update(((arg, arg) for arg in arglist if len(arg) == 1))
 
             # Zip up the keyword argument names with their defaults
             if defaults:
@@ -574,6 +576,7 @@ class Baker(object):
 
             elif arg.startswith("--"):
                 # Process long option
+
                 value = None
                 if "=" in arg:
                     # The argument was specified like --keyword=value
@@ -644,7 +647,12 @@ class Baker(object):
                             # the rest of the characters must represent the
                             # value (i.e. old-style UNIX option like -Nname)
                             value = arg[i + 1:]
-
+                        
+                        # Remove leading equals sign if it's present. That
+                        # means the option/value were specified as opt=value
+                        # Then remove quotes.
+                        value = value.lstrip("=").strip("'\"")
+                        
                         try:
                             kwargs[name] = totype(value, default)
                         except (TypeError, ValueError):
@@ -676,10 +684,8 @@ class Baker(object):
         scriptname = argv[0]
         argv_len = len(argv)
 
-        if argv_len < 2 and self.defaultcommand:
-            argv.append(self.defaultcommand.name)
-
-        if argv_len < 2 or argv[1] == "-h" or argv[1] == "--help":
+        if (argv_len < 2 and self.defaultcommand is None) or \
+           (argv_len > 1 and argv[1] == "-h" or argv[1] == "--help"):
             # Print the documentation for the script
             raise TopHelp(scriptname)
 
@@ -710,6 +716,7 @@ class Baker(object):
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.
         args, kwargs = self.parse_args(scriptname, cmd, options, test=test)
+        print scriptname, cmd.name, args, kwargs
         return (scriptname, cmd, args, kwargs)
 
     def apply(self, scriptname, cmd, args, kwargs, instance=None):
