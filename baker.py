@@ -281,7 +281,8 @@ class Baker(object):
 
             return fn
 
-    def usage(self, cmd=None, scriptname=None, exception=None, fobj=sys.stdout):
+    def usage(self, cmd=None, scriptname=None,
+              exception=None, fobj=sys.stdout):
         """
         Prints usage of the specified command.
         """
@@ -650,12 +651,12 @@ class Baker(object):
                             # the rest of the characters must represent the
                             # value (i.e. old-style UNIX option like -Nname)
                             value = arg[i + 1:]
-                        
+
                         # Remove leading equals sign if it's present. That
                         # means the option/value were specified as opt=value
                         # Then remove quotes.
                         value = value.lstrip("=").strip("'\"")
-                        
+
                         try:
                             kwargs[name] = totype(value, default)
                         except (TypeError, ValueError):
