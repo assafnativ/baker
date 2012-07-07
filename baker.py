@@ -472,7 +472,7 @@ class Baker(object):
         # options, we need to create a reverse mapping.
         shortchars = dict((v, k) for k, v in shortopts.items())
 
-        # The *vargs list and **kwargs dict to build up from the command line
+        # The *args list and **kwargs dict to build up from the command line
         # arguments
         vargs = []
         kwargs = {}
@@ -485,8 +485,9 @@ class Baker(object):
 
             if arg == "--":
                 double_dash += 1
-                assert double_dash == 1
-                # All arguments following a single hyphen are treated as
+                if double_dash != 1:
+                    raise CommandError("You cannot specify -- more than once")
+                # All arguments following a double hyphen are treated as
                 # positional arguments
                 vargs.extend(argv)
                 break
@@ -494,12 +495,12 @@ class Baker(object):
             elif arg == "-":
                 # sys.stdin
                 single_dash += 1
-                assert single_dash == 1
-                vargs.append('-')
+                if single_dash != 1:
+                    raise CommandError("You cannot specify - more than once")
+                vargs.append("-")
 
             elif arg.startswith("--"):
                 # Process long option
-
                 value = None
                 if "=" in arg:
                     # The argument was specified like --keyword=value
@@ -552,9 +553,9 @@ class Baker(object):
 
                     # Get the long option name corresponding to this char
                     name = shortchars[char]
-
                     default = keywords[name]
-                    if type(default) is bool:
+
+                    if isinstance(default, bool):
                         # If this option is a boolean, it doesn't need a value;
                         # specifying it on the command line means "do the
                         # opposite of the default".
@@ -599,26 +600,27 @@ class Baker(object):
             argv = sys.argv
 
         scriptname = argv[0]
+        argv_len = len(argv)
 
-        if len(argv) < 2 and self.defaultcommand:
+        if argv_len < 2 and self.defaultcommand:
             argv.append(self.defaultcommand.name)
 
-        if (len(argv) < 2) or (argv[1] == "-h" or argv[1] == "--help"):
+        if argv_len < 2 or argv[1] == "-h" or argv[1] == "--help":
             # Print the documentation for the script
             raise TopHelp(scriptname)
 
         if argv[1] == "help":
-            if len(argv) > 2 and argv[2] in self.commands:
+            if argv_len > 2 and argv[2] in self.commands:
                 cmd = self.commands[argv[2]]
                 raise CommandHelp(scriptname, cmd)
             raise TopHelp(scriptname)
 
-        if len(argv) > 1 and argv[1] in self.commands:
+        if argv_len > 1 and argv[1] in self.commands:
             # The first argument on the command line (after the script name
             # is the command to run.
             cmd = self.commands[argv[1]]
 
-            if len(argv) > 2 and (argv[2] == "-h" or argv[2] == "--help"):
+            if argv_len > 2 and (argv[2] == "-h" or argv[2] == "--help"):
                 raise CommandHelp(scriptname, cmd)
 
             options = argv[2:]

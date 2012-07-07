@@ -135,6 +135,7 @@ class TestBaker(unittest.TestCase):
         return string
 
     def assertEqual(self, a, b):
+        # this is for Python 3 compatibility
         if sys.version_info[:2] >= (3, 0):
             if isinstance(a, bytes) and not isinstance(b, bytes):
                 b = self.bytes(b, 'utf-8')
@@ -171,6 +172,7 @@ class TestBaker(unittest.TestCase):
         @b.command(default=True)
         def test(a="a", b="b", c="c"):
             return (a, b, c)
+
         self.assertEqual(b.run(["s", "1", "2", "3"], main=False),
                          ("1", "2", "3"))
         self.assertEqual(b.run(["s"], main=False), ("a", "b", "c"))
@@ -181,9 +183,18 @@ class TestBaker(unittest.TestCase):
         @b.command
         def test(a="a", b="b", c="c"):
             return (a, b, c)
-        self.assertEqual(b.run(["s", "test", "--a", "alfa", "--b=bravo"],
+
+        self.assertEqual(b.run(["s", "test", "-a", "alfa", "-b=bravo"],
                                main=False),
                          ("alfa", "bravo", "c"))
+        self.assertEqual(b.run(["s", "test", "alfa", "bravo"], main=False),
+                         ("alfa", "bravo", "c"))
+        self.assertEqual(b.run(["s", "test", "-b", "bravo", "alfa"],
+                               main=False),
+                         ("alfa", "bravo", "c"))
+        self.assertEqual(b.run(["s", "test", "-a", "alfa",
+                                "-b='multiple words'"], main=False),
+                         ("alfa", "multiple words", "c"))
 
     def test_shortopts(self):
         b = baker.Baker()
@@ -191,6 +202,7 @@ class TestBaker(unittest.TestCase):
         @b.command(shortopts={"alfa": "a", "bravo": "b", "charlie": "c"})
         def test(alfa="1", bravo="2", charlie=False):
             return (alfa, bravo, charlie)
+
         self.assertEqual(b.run(["s", "test", "-a", "100", "-cb200"],
                                main=False),
                          ("100", "200", True))
@@ -206,7 +218,7 @@ class TestBaker(unittest.TestCase):
                          ("100", False, None))
         self.assertEqual(b.run(["s", "test", "100", "200"], main=False),
                          ("100", "200", None))
-        self.assertEqual(b.run(["s", "test", "--b", "100", "200"], main=False),
+        self.assertEqual(b.run(["s", "test", "-b", "100", "200"], main=False),
                          ("100", True, "200"))
 
     def test_kwargs(self):
@@ -216,9 +228,135 @@ class TestBaker(unittest.TestCase):
         def test(**kwargs):
             return kwargs
 
-        self.assertEqual(b.run(["s", "test", "--a", "1", "--b", "2"],
+        self.assertEqual(b.run(["s", "test", "-a", "1", "-b", "2"],
                                main=False),
                          {"a": "1", "b": "2"})
+    
+    def test_defaulted_args_and_kwargs(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a=0, **kwargs):
+            return (a, kwargs)
+
+        self.assertEqual(b.run(["s", "test", "-a", "1", "-b", "2"],
+                               main=False),
+                         (1, {"b": "2"}))
+        self.assertEqual(b.run(["s", "test", "-b", "1", "-c", "2"],
+                               main=False),
+                         ("0", {"b": "1", "c": "2"}))
+
+    def test_pos_defaulted_arg_and_kwargs(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a=0, **kwargs):
+            return (a, kwargs)
+
+        self.assertEqual(b.run(["s", "test", "-a", "1", "-b", "2"],
+                               main=False),
+                         ("1", "2", {}))
+        with self.assertRaises(baker.CommandError):
+            b.run(["s", "test", "-b", "1", "-c", "2"], main=False)
+
+    def test_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(*args):
+            return args
+
+        self.assertEqual(b.run(["s", "test", "1", "2"], main=False),
+                        ("1", "2"))
+
+    def test_defaulted_arg_and_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a="0", *args):
+            return (a, args)
+
+        self.assertEqual(b.run(["s", "test", "1", "2"], main=False),
+                        ("0", ("1", "2")))
+        self.assertEqual(b.run(["s", "test", "-a", "1", "2"], main=False),
+                        ("1", ("2",)))
+        #this one should assign the named arg first
+        self.assertEqual(b.run(["s", "test", "2", "-a", "1"], main=False),
+                        ("1", ("2",)))
+
+    def test_pos_defaulted_arg_and_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b="0", *args):
+            return (a, b, args)
+
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", ()))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", ()))
+        self.assertEqual(b.run(["s", "test", "2", "1"], main=False),
+                        ("2", "0", ("1",)))
+        self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False),
+                        ("1", "0", ("2", "3",)))
+
+        ce = baker.CommandError
+        br = b.run
+
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "1", "--c", "2"], main=False)
+
+    def test_pos_defaulted_arg_and_kwargs(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b="0", **kwargs):
+            return (a, b, kwargs)
+
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", {}))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"], main=False),
+                        ("1", "2", {"c":"3"}))
+
+        ce = baker.CommandError
+        br = b.run
+
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+
+    def test_pos_defaulted_arg_args_and_kwargs(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b="0", *args, **kwargs):
+            return (a, b, args, kwargs)
+
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", (), {}))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", (), {}))
+        self.assertEqual(b.run(["s", "test", "2", "1"], main=False),
+                        ("2", "0", ("1",), {}))
+        self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False),
+                        ("1", "0", ("2", "3",), {}))
+        self.assertEqual(b.run(["s", "test", "1", "--c", "2"], main=False),
+                        ("1", "0", (), {"c": "2"}))
+
+        ce = baker.CommandError
+        br = b.run
+
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+
+    def test_boolean_arg_and_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a=False, *args):
+            return (a, args)
+
+        self.assertEqual(b.run(["s", "test", "1", "2"], main=False),
+                        (False, ("1", "2")))
+        self.assertEqual(b.run(["s", "test", "-a", "1", "2"], main=False),
+                        (True, ("1", "2")))
 
     def test_noargs(self):
         b = baker.Baker()
@@ -229,6 +367,95 @@ class TestBaker(unittest.TestCase):
 
         self.assertEqual(b.run(["script.py", "noargs"], main=False), 123)
 
+    def test_defaulted_arg_and_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a="0", *args):
+            return (a, args)
+
+        self.assertEqual(b.run(["s", "test", "1", "2"], main=False),
+                        ("0", ("1", "2")))
+        self.assertEqual(b.run(["s", "test", "-a", "1", "2"], main=False),
+                        ("1", ("2",)))
+        #this one should assign the named arg first
+        self.assertEqual(b.run(["s", "test", "2", "-a", "1"], main=False),
+                        ("1", ("2",)))
+
+    def test_pos_defaulted_arg_and_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b="0", *args):
+            return (a, b, args)
+
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", ()))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", ()))
+        self.assertEqual(b.run(["s", "test", "2", "1"], main=False),
+                        ("2", "0", ("1",)))
+        self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False),
+                        ("1", "0", ("2", "3",)))
+
+        ce = baker.CommandError
+        br = b.run
+
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+        self.assertRaises(ce, br, ["s", "test", "1", "--c", "2"], main=False)
+
+    def test_pos_defaulted_arg_and_kwargs(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b="0", **kwargs):
+            return (a, b, kwargs)
+
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", {}))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"], main=False),
+                        ("1", "2", {"c":"3"}))
+
+        ce = baker.CommandError
+        br = b.run
+
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+
+    def test_pos_defaulted_arg_args_and_kwargs(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b="0", *args, **kwargs):
+            return (a, b, args, kwargs)
+
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", (), {}))
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
+                        ("1", "2", (), {}))
+        self.assertEqual(b.run(["s", "test", "2", "1"], main=False),
+                        ("2", "0", ("1",), {}))
+        self.assertEqual(b.run(["s", "test", "1", "2", "3"], main=False),
+                        ("1", "0", ("2", "3",), {}))
+        self.assertEqual(b.run(["s", "test", "1", "--c", "2"], main=False),
+                        ("1", "0", (), {"c": "2"}))
+
+        ce = baker.CommandError
+        br = b.run
+
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"], main=False)
+
+    def test_boolean_arg_and_args(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a=False, *args):
+            return (a, args)
+
+        self.assertEqual(b.run(["s", "test", "1", "2"], main=False),
+                        (False, ("1", "2")))
+        self.assertEqual(b.run(["s", "test", "-a", "1", "2"], main=False),
+                        (True, ("1", "2")))
+
     def test_alias(self):
         b = baker.Baker()
 
@@ -237,6 +464,19 @@ class TestBaker(unittest.TestCase):
             return 123
 
         self.assertEqual(b.run(["script.py", "track-all"], main=False), 123)
+
+    def test_single_dash(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b=0):
+            return a, b
+
+        self.assertEqual(b.run(["s", "test", "first"], main=False),
+                         ("first", 0))
+        self.assertEqual(b.run(["s", "test", "-b", "4", "first"],
+                               main=False),
+                         ("first", 4))
 
     def test_nooptional(self):
         b = baker.Baker()
