@@ -255,8 +255,9 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["s", "test", "-b", "7", "--", "6", "8"],
                                main=False),
                          ("6", 7, "8"))
-        with self.assertRaises(baker.CommandError):
-            b.run(["s", "test", "9", "--", "10", "--", "9"], main=False)
+        self.assertRaises(baker.CommandError, b.run,
+                          ["s", "test", "9", "--", "10", "--", "9"],
+                          main=False)
 
     def test_defaulted_args_and_kwargs(self):
         b = baker.Baker()
@@ -270,7 +271,7 @@ class TestBaker(unittest.TestCase):
                          (1, {"b": "2"}))
         self.assertEqual(b.run(["s", "test", "-b", "1", "-c", "2"],
                                main=False),
-                         ("0", {"b": "1", "c": "2"}))
+                         (0, {"b": "1", "c": "2"}))
 
     def test_pos_defaulted_arg_and_kwargs(self):
         b = baker.Baker()
@@ -282,8 +283,8 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["s", "test", "-a", "1", "-b", "2"],
                                main=False),
                          ("1", "2", {}))
-        with self.assertRaises(baker.CommandError):
-            b.run(["s", "test", "-b", "1", "-c", "2"], main=False)
+        self.assertRaises(baker.CommandError, b.run,
+                          ["s", "test", "-b", "1", "-c", "2"], main=False)
 
     def test_args(self):
         b = baker.Baker()

@@ -618,18 +618,21 @@ class Baker(object):
                 # Store this option
                 kwargs[name] = value
 
-            elif arg.startswith("-") and cmd.shortopts:
+            elif arg.startswith("-") and (cmd.shortopts or cmd.has_kwargs):
                 # Process short option(s)
 
                 # For each character after the '-'...
                 for i in range(1, len(arg)):
                     char = arg[i]
-                    if char not in shortchars:
+                    if cmd.has_kwargs:
+                        name = char
+                        default = keywords.get(name)
+                    elif char not in shortchars:
                         continue
-
-                    # Get the long option name corresponding to this char
-                    name = shortchars[char]
-                    default = keywords[name]
+                    else:
+                        # Get the long option name corresponding to this char
+                        name = shortchars[char]
+                        default = keywords[name]
 
                     if isinstance(default, bool):
                         # If this option is a boolean, it doesn't need a value;
@@ -769,9 +772,8 @@ class Baker(object):
             if cmd.has_varargs:
                 newargs.extend(args)
             else:
-                msg = "Too many arguments to %s: %s"
-                raise CommandError(msg % (cmd.name, " ".join(args)),
-                                   scriptname, cmd)
+                msg = "Too many arguments to %r: %s"
+                raise CommandError(msg % (cmd.name, args), scriptname, cmd)
 
         if not cmd.has_kwargs:
             for k in newkwargs:
