@@ -684,16 +684,19 @@ class Baker(object):
         scriptname = argv[0]
         argv_len = len(argv)
 
-        if (argv_len < 2 and self.defaultcommand is None) or \
-           (argv_len > 1 and argv[1] == "-h" or argv[1] == "--help"):
-            # Print the documentation for the script
+        if argv_len < 2 and self.defaultcommand is None:
             raise TopHelp(scriptname)
 
-        if argv[1] == "help":
-            if argv_len > 2 and argv[2] in self.commands:
-                cmd = self.commands[argv[2]]
-                raise CommandHelp(scriptname, cmd)
-            raise TopHelp(scriptname)
+        if argv_len > 1:
+            if argv[1] in ("-h", "--help"):
+                # Print the documentation for the script
+                raise TopHelp(scriptname)
+
+            elif argv[1] == "help":
+                if argv_len > 2 and argv[2] in self.commands:
+                    cmd = self.commands[argv[2]]
+                    raise CommandHelp(scriptname, cmd)
+                raise TopHelp(scriptname)
 
         if argv_len > 1 and argv[1] in self.commands:
             # The first argument on the command line (after the script name
@@ -716,7 +719,6 @@ class Baker(object):
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.
         args, kwargs = self.parse_args(scriptname, cmd, options, test=test)
-        print scriptname, cmd.name, args, kwargs
         return (scriptname, cmd, args, kwargs)
 
     def apply(self, scriptname, cmd, args, kwargs, instance=None):

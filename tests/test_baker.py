@@ -245,6 +245,19 @@ class TestBaker(unittest.TestCase):
                                main=False),
                          {"a": "1", "b": "2"})
 
+    def test_double_dash(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b=0, c=4):
+            return a, b, c
+
+        self.assertEqual(b.run(["s", "test", "-b", "7", "--", "6", "8"],
+                               main=False),
+                         ("6", 7, "8"))
+        with self.assertRaises(baker.CommandError):
+            b.run(["s", "test", "9", "--", "10", "--", "9"], main=False)
+
     def test_defaulted_args_and_kwargs(self):
         b = baker.Baker()
 
