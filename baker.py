@@ -21,6 +21,7 @@ Django's manage.py, svn, hg, etc.
 '''
 
 import re
+import io
 import os
 import sys
 import gzip
@@ -336,13 +337,19 @@ class Baker(object):
         # This function automatically converts strings to bytes
         # if running under Python 3. Otherwise we cannot write
         # to a file.
-        if sys.version_info[:2] >= (3, 0) and convert:
+
+        # First detect whether fobj requires binary stream
+        if hasattr(fobj, 'mode'):
+            # A file-like object
+            binary = 'b' in fobj.mode
+        else:
+            # A subclass of io.BufferedIOBase?
+            binary = isinstance(fobj, io.BufferedIOBase)
+        # If we are running under Python 3 and binary is required
+        if sys.version_info[:2] >= (3, 0) and convert and binary:
             content = bytes(content, 'utf-8')
-        try:
-            fobj.write(content)
-        except TypeError:
-            # With some files content type must be str, not bytes
-            fobj.write(str(content))
+
+        fobj.write(content)
 
     def print_top_help(self, scriptname, fobj=sys.stdout):
         """
