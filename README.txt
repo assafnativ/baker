@@ -1,6 +1,14 @@
 History
 =======
 
+Version 1.2
+    * Python 3 support!
+    * Runs from Python 2.6 up to 3.2.
+    * More unit tests.
+    * Code coverage to 89%.
+    * Single-letter arguments are now automatically added to shortopts.
+    * Fixed #14: Unable to mix varargs and kwargs.
+
 Version 1.1
 	* ``baker.run()`` now prints the return value of the command function.
 	* Command usage help now shows help for optional arguments.
@@ -8,6 +16,7 @@ Version 1.1
 	* Added ``baker.usage([commandname])``.
 	* Added unit tests.
 	* Fixed bugs.
+
 
 Overview
 ========
@@ -297,5 +306,3 @@ Released under the
 Please file bugs in the BitBucket issue tracker.
 
 http://bitbucket.org/mchaput/baker
-
-

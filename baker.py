@@ -29,6 +29,9 @@ from collections import namedtuple
 from inspect import getargspec
 from textwrap import wrap
 
+
+__version__ = '1.2'
+
 if sys.version_info[:2] < (3, 0):
     range = xrange
 
