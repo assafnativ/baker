@@ -40,7 +40,7 @@ if sys.version_info[:2] < (3, 0):
 # Stores metadata about a command
 Cmd = namedtuple("Cmd", ["name", "fn", "argnames", "keywords", "shortopts",
                          "has_varargs", "has_kwargs", "docstring",
-                         "paramdocs", "is_method"])
+                         "varargs_name", "paramdocs", "is_method"])
 
 PARAM_RE = re.compile(r"^([\t ]*):param (.*?): ([^\n]*\n(\1[ \t]+[^\n]*\n)*)",
                       re.MULTILINE)
@@ -191,11 +191,11 @@ class CommandHelp(Exception):
 
 class Baker(object):
     """
-    The main class that do all the hard work. It can parse the args and format
+    The main class that does all the hard work. It can parse the args and format
     them accordingly.
     """
 
-    def __init__(self):
+    def __init__(self, global_options=None):
         self.commands = {}
         self.defaultcommand = None
 
@@ -242,6 +242,7 @@ class Baker(object):
             arglist, vargsname, kwargsname, defaults = getargspec(fn)
             has_varargs = bool(vargsname)
             has_kwargs = bool(kwargsname)
+            varargs_name = vargsname
 
             # Get the function's docstring
             docstring = fn.__doc__ or ""
@@ -276,7 +277,7 @@ class Baker(object):
 
             # Create a Cmd object to represent this command and store it
             cmd = Cmd(name, fn, arglist, keywords, shortopts, has_varargs,
-                      has_kwargs, docstring, params, is_method)
+                      has_kwargs, docstring, varargs_name, params, is_method)
             self.commands[name] = cmd
 
             # If default is True, set this as the default command
@@ -359,7 +360,7 @@ class Baker(object):
         :param fobj: the file to write the help to. The default is stdout.
         """
         # Print the basic help for running a command
-        self.write(fobj, "\nUsage: %s COMMAND <options>\n\n" % scriptname)
+        self.write(fobj, "Usage: %s COMMAND <options>\n\n" % scriptname)
 
         # Get a sorted list of all command names
         cmdnames = sorted(self.commands.keys())
@@ -420,9 +421,7 @@ class Baker(object):
         ret = []
         posargs = [a for a in cmd.argnames if a not in cmd.keywords]
         if posargs:
-            ret.append("")
-            ret.append("Required Arguments:")
-            ret.append("")
+            ret.extend(("", "Required Arguments:", ""))
 
             # Find the length of the longest formatted heading
             rindent = max(len(argname) + 3 for argname in posargs)
@@ -457,8 +456,7 @@ class Baker(object):
         """
         Returns the heading of the given command.
         """
-        head = keyname
-        head = " --" + head
+        head = " --" + keyname
         if keyname in cmd.shortopts:
             head = " -" + cmd.shortopts[keyname] + head
         head += "  "
@@ -479,7 +477,7 @@ class Baker(object):
 
             # Make formatted headings, e.g. " -k --keyword  ", and put them in
             # a list like [(name, heading), ...]
-            heads = []
+            heads, rindent = [], None
             for keyname in keynames:
                 head = self.return_head(cmd, keyname)
                 heads.append((keyname, head))
@@ -496,8 +494,14 @@ class Baker(object):
                     ret += self.return_individual_keyword_doc(cmd, keyname,
                                                               head, rindent)
 
-            ret.append("")
+            ret.extend(("", "Variable arguments:", ""))
+            if cmd.has_varargs:
+                keyname = cmd.varargs_name
+                head = " *%s " % (keyname)
+                ret += self.return_individual_keyword_doc(cmd, keyname, head,
+                                                          rindent)
 
+            ret.append("")
             if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
                 ret.append("(specifying a double hyphen (--) in the argument"
                            " list means all")
@@ -516,7 +520,7 @@ class Baker(object):
         """
 
         # Print the usage for the command
-        self.write(fobj, "\nUsage: %s %s" % (scriptname, cmd.name))
+        self.write(fobj, "Usage: %s %s" % (scriptname, cmd.name))
 
         # Print the required and "optional" arguments (where optional
         # arguments are keyword arguments with default None).
@@ -530,7 +534,7 @@ class Baker(object):
 
         if cmd.has_varargs:
             # This command accepts a variable number of positional arguments
-            self.write(fobj, " [...]")
+            self.write(fobj, " [<%s>...]" % (cmd.varargs_name))
         self.write(fobj, "\n\n")
 
         self.write(fobj, "\n".join(self.return_cmd_doc(cmd)))
