@@ -13,8 +13,7 @@ except ImportError:  # python 3
 import baker
 
 
-MAIN_HELP = """
-Usage: script.py COMMAND <options>
+MAIN_HELP = """Usage: script.py COMMAND <options>
 
 Available commands:
  main  
@@ -23,8 +22,7 @@ Available commands:
 Use 'script.py <command> --help' for individual command help.
 """
 
-COMMAND_HELP = """
-Usage: script.py open <url> [<xml>] [<json>] [<use>]
+COMMAND_HELP = """Usage: script.py open <url> [<xml>] [<json>] [<use>]
 
 Open a URL.
 
@@ -449,7 +447,7 @@ class TestBaker(unittest.TestCase):
         f = StringIO()
         b.usage("test", scriptname="script.py", fobj=f)
         self.assertEqual(f.getvalue(),
-                         '\nUsage: script.py test\n\nTest command\n')
+                         'Usage: script.py test\n\nTest command\n')
 
     def test_help(self):
         b = build_baker()
