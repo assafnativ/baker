@@ -500,13 +500,13 @@ class Baker(object):
             head = " *%s " % (keyname)
             ret += self.return_individual_keyword_doc(cmd, keyname, head)
 
+        ret.append("")     
+        if any(cmd.keywords.get(a) is None for a in cmd.argnames):
+            ret.append("(specifying a double hyphen (--) in the argument"
+                       " list means all")
+            ret.append("subsequent arguments are treated as bare "
+                       "arguments, not options)")
             ret.append("")
-            if any(cmd.keywords.get(a) is None for a in cmd.argnames):
-                ret.append("(specifying a double hyphen (--) in the argument"
-                           " list means all")
-                ret.append("subsequent arguments are treated as bare "
-                           "arguments, not options)")
-                ret.append("")
         return ret
 
     def print_command_help(self, scriptname, cmd, fobj=sys.stdout):

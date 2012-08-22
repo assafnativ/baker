@@ -71,6 +71,15 @@ json = False
 use = True
 """
 
+VARARGS_HELP = """Usage: script.py test [<files>...]
+
+Command documentation.
+
+Variable arguments:
+
+   *files Varargs documentation.
+"""
+
 
 def build_baker():
     b = baker.Baker()
@@ -454,7 +463,16 @@ class TestBaker(unittest.TestCase):
 
         @b.command
         def test(*files):
-            pass
+            """Command documentation.
+
+            :param files: Varargs documentation.
+            """
+
+            return files
+
+        out = StringIO()
+        b.run(["script.py", "test", "--help"], helpfile=out)
+        self.assertEqual(out.getvalue(), VARARGS_HELP)
 
     def test_help(self):
         b = build_baker()
