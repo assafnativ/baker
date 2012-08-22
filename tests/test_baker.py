@@ -130,7 +130,7 @@ class TestFunctions(unittest.TestCase):
                          "This is an example docstring.\n\n" + " " * 8)
         self.assertEqual(baker.process_docstring(docstring),
                          ["This is an example docstring.",
-                          ":param add: Add a line. " \
+                          ":param add: Add a line. "
                           ":param remove: Remove a line."])
 
     def test_openinput(self):

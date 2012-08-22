@@ -191,8 +191,8 @@ class CommandHelp(Exception):
 
 class Baker(object):
     """
-    The main class that does all the hard work. It can parse the args and format
-    them accordingly.
+    The main class that does all the hard work. It can parse the args and
+    format them accordingly.
     """
 
     def __init__(self, global_options=None):
@@ -385,7 +385,8 @@ class Baker(object):
                 if paras:
                     # Print the first paragraph
                     self.write(fobj, "\n".join(format_paras([paras[0]], 76,
-                                             indent=rindent, lstripline=[0])))
+                                               indent=rindent,
+                                               lstripline=[0])))
                     self.write(fobj, "\n")
                 else:
                     self.write(fobj, "\n")
@@ -500,7 +501,7 @@ class Baker(object):
             head = " *%s " % (keyname)
             ret += self.return_individual_keyword_doc(cmd, keyname, head)
 
-        ret.append("")     
+        ret.append("")
         if any(cmd.keywords.get(a) is None for a in cmd.argnames):
             ret.append("(specifying a double hyphen (--) in the argument"
                        " list means all")
