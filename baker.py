@@ -494,15 +494,14 @@ class Baker(object):
                     ret += self.return_individual_keyword_doc(cmd, keyname,
                                                               head, rindent)
 
-            if cmd.has_varargs:
-                ret.extend(("", "Variable arguments:", ""))
-                keyname = cmd.varargs_name
-                head = " *%s " % (keyname)
-                ret += self.return_individual_keyword_doc(cmd, keyname, head,
-                                                          rindent)
+        if cmd.has_varargs:
+            ret.extend(("", "Variable arguments:", ""))
+            keyname = cmd.varargs_name
+            head = " *%s " % (keyname)
+            ret += self.return_individual_keyword_doc(cmd, keyname, head)
 
             ret.append("")
-            if any((cmd.keywords.get(a) is None) for a in cmd.argnames):
+            if any(cmd.keywords.get(a) is None for a in cmd.argnames):
                 ret.append("(specifying a double hyphen (--) in the argument"
                            " list means all")
                 ret.append("subsequent arguments are treated as bare "

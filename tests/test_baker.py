@@ -449,6 +449,13 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(f.getvalue(),
                          'Usage: script.py test\n\nTest command\n')
 
+    def test_varargs_usage(self):
+        b = baker.Baker()
+
+        @b.command
+        def test(*files):
+            pass
+
     def test_help(self):
         b = build_baker()
         out = StringIO()
