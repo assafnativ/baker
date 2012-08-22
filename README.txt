@@ -1,6 +1,13 @@
 History
 =======
 
+Version 1.3
+    * Better Python 3 support.
+    * Improved test coverage.
+    * Fixed #22: *varargs are now displayed in command help.
+    * Fixed annoying beavhior of *varargs help when no keyword
+        arguments are present.
+
 Version 1.2
     * Python 3 support!
     * Runs from Python 2.6 up to 3.2.
