@@ -494,8 +494,8 @@ class Baker(object):
                     ret += self.return_individual_keyword_doc(cmd, keyname,
                                                               head, rindent)
 
-            ret.extend(("", "Variable arguments:", ""))
             if cmd.has_varargs:
+                ret.extend(("", "Variable arguments:", ""))
                 keyname = cmd.varargs_name
                 head = " *%s " % (keyname)
                 ret += self.return_individual_keyword_doc(cmd, keyname, head,
