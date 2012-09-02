@@ -198,9 +198,11 @@ class Baker(object):
     def __init__(self, global_options=None):
         self.commands = {}
         self.defaultcommand = None
+        self.globalcommand = None
+        self.global_options = {}
 
     def command(self, fn=None, name=None, default=False,
-                params=None, shortopts=None):
+                params=None, shortopts=None, global_command=False):
         """
         Registers a command with the bakery. This does not call the
         function, it simply adds it to the list of functions this Baker
@@ -234,7 +236,8 @@ class Baker(object):
             return lambda fn: self.command(fn, default=default,
                                            name=name,
                                            params=params,
-                                           shortopts=shortopts)
+                                           shortopts=shortopts,
+                                           global_command=global_command)
         else:
             name = name or fn.__name__
 
@@ -278,7 +281,11 @@ class Baker(object):
             # Create a Cmd object to represent this command and store it
             cmd = Cmd(name, fn, arglist, keywords, shortopts, has_varargs,
                       has_kwargs, docstring, varargs_name, params, is_method)
-            self.commands[name] = cmd
+            # If global_command is True, set this as the global command
+            if global_command:
+                self.globalcommand = cmd
+            else:
+                self.commands[name] = cmd
 
             # If default is True, set this as the default command
             if default:
@@ -725,14 +732,25 @@ class Baker(object):
                 raise CommandHelp(scriptname, cmd)
 
             options = argv[2:]
-        else:
+        elif self.defaultcommand is not None:
             # No known command was specified. If there's a default command,
             # use that.
             cmd = self.defaultcommand
-            if cmd is None:
-                raise CommandError("No command specified", scriptname)
-
             options = argv[1:]
+        elif self.globalcommand is not None:
+            for i, arg in enumerate(argv[1:], 1):
+                if arg in self.commands and not argv[i - 1].startswith('-'):
+                    break
+            else:
+                raise CommandError("No command specified", scriptname)
+            global_args, options = argv[1:i], argv[i + 1:]
+            args, kwargs = self.parse_args(scriptname, self.globalcommand,
+                                           global_args, test=test)
+            self.global_options = self.apply(scriptname, self.globalcommand,
+                                             args, kwargs)
+            cmd = self.commands[argv[i]]
+        else:
+            raise CommandError("No command specified", scriptname)
 
         # Parse the rest of the arguments on the command line and use them to
         # call the command function.

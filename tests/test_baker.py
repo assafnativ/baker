@@ -105,6 +105,7 @@ def build_baker():
 class TestFunctions(unittest.TestCase):
 
     def test_totype(self):
+        """Test whether totype works"""
         candidates = {("true", "yes", "on", "1"): True,
                       ("false", "no", "off", "0"): False}
         for values, expected in candidates.items():
@@ -117,6 +118,7 @@ class TestFunctions(unittest.TestCase):
         self.assertRaises(TypeError, baker.totype, "invalid", False)
 
     def test_docstrings(self):
+        """Test docstring processing"""
         docstring = """This is an example docstring.
 
         :param add: Add a line.
@@ -134,6 +136,7 @@ class TestFunctions(unittest.TestCase):
                           ":param remove: Remove a line."])
 
     def test_openinput(self):
+        """Test Baker.openinput()"""
         self.assertTrue(baker.openinput('-') is sys.stdin)
         tempdir = tempfile.mkdtemp()
         for ext, opener in [(".gz", gzip.GzipFile), (".bz2", bz2.BZ2File)]:
@@ -161,6 +164,7 @@ class TestBaker(unittest.TestCase):
         super(TestBaker, self).assertEqual(a, b)
 
     def test_simple(self):
+        """Test a very simple Baker"""
         b = baker.Baker()
 
         @b.command
@@ -170,6 +174,7 @@ class TestBaker(unittest.TestCase):
                          ("1", "2", "3"))
 
     def test_method(self):
+        """Test whether Baker.command works on methods too"""
         b = baker.Baker()
 
         class Test(object):
@@ -187,6 +192,7 @@ class TestBaker(unittest.TestCase):
                          (42, "1", "2", True))
 
     def test_default(self):
+        """Test default commands"""
         b = baker.Baker()
 
         @b.command(default=True)
@@ -198,6 +204,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["s"], main=False), ("a", "b", "c"))
 
     def test_options(self):
+        """Test options"""
         b = baker.Baker()
 
         @b.command
@@ -217,6 +224,7 @@ class TestBaker(unittest.TestCase):
                          ("alfa", "multiple words", "c"))
 
     def test_shortopts(self):
+        """Test short options"""
         b = baker.Baker()
 
         @b.command(shortopts={"alfa": "a", "bravo": "b", "charlie": "c"})
@@ -228,6 +236,7 @@ class TestBaker(unittest.TestCase):
                          ("100", "200", True))
 
     def test_optional(self):
+        """Test optional arguments"""
         b = baker.Baker()
 
         @b.command
@@ -242,6 +251,7 @@ class TestBaker(unittest.TestCase):
                          ("100", True, "200"))
 
     def test_kwargs(self):
+        """Test **kwargs"""
         b = baker.Baker()
 
         @b.command
@@ -252,21 +262,8 @@ class TestBaker(unittest.TestCase):
                                main=False),
                          {"a": "1", "b": "2"})
 
-    def test_double_dash(self):
-        b = baker.Baker()
-
-        @b.command
-        def test(a, b=0, c=4):
-            return a, b, c
-
-        self.assertEqual(b.run(["s", "test", "-b", "7", "--", "6", "8"],
-                               main=False),
-                         ("6", 7, "8"))
-        self.assertRaises(baker.CommandError, b.run,
-                          ["s", "test", "9", "--", "10", "--", "9"],
-                          main=False)
-
     def test_defaulted_args_and_kwargs(self):
+        """Test *args and **kwargs with default arguments"""
         b = baker.Baker()
 
         @b.command
@@ -280,18 +277,8 @@ class TestBaker(unittest.TestCase):
                                main=False),
                          (0, {"b": "1", "c": "2"}))
 
-    def test_pos_defaulted_arg_and_kwargs(self):
-        b = baker.Baker()
-
-        @b.command
-        def test(a=0, **kwargs):
-            return (a, kwargs)
-
-        self.assertEqual(b.run(["s", "test", "-a", "1", "-b", "2"],
-                               main=False),
-                         (1, {"b": "2"}))
-
     def test_args(self):
+        """Test *args"""
         b = baker.Baker()
 
         @b.command
@@ -302,6 +289,7 @@ class TestBaker(unittest.TestCase):
                         ("1", "2"))
 
     def test_defaulted_arg_and_args(self):
+        """Test *args and arguments with default values"""
         b = baker.Baker()
 
         @b.command
@@ -317,6 +305,9 @@ class TestBaker(unittest.TestCase):
                         ("1", ("2",)))
 
     def test_pos_defaulted_arg_and_args(self):
+        """Test positional arguments, arguments with default values
+        and *args
+        """
         b = baker.Baker()
 
         @b.command
@@ -341,6 +332,9 @@ class TestBaker(unittest.TestCase):
                           main=False)
 
     def test_pos_defaulted_arg_and_kwargs_2(self):
+        """Test positional arguments, arguments with default values and
+        **kwargs
+        """
         b = baker.Baker()
 
         @b.command
@@ -349,17 +343,20 @@ class TestBaker(unittest.TestCase):
 
         self.assertEqual(b.run(["s", "test", "1", "-b", "2"], main=False),
                         ("1", "2", {}))
-        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "--c", "3"],
+        self.assertEqual(b.run(["s", "test", "1", "-b", "2", "-c", "3"],
                                main=False),
                         ("1", "2", {"c": "3"}))
 
         ce = baker.CommandError
         br = b.run
 
-        self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
+        self.assertRaises(ce, br, ["s", "test", "-b", "1", "-c", "2"],
                           main=False)
 
     def test_pos_defaulted_arg_args_and_kwargs(self):
+        """Test positional arguments, arguments with default values, *args
+        and **kwargs
+        """
         b = baker.Baker()
 
         @b.command
@@ -379,11 +376,11 @@ class TestBaker(unittest.TestCase):
 
         ce = baker.CommandError
         br = b.run
-
         self.assertRaises(ce, br, ["s", "test", "-b", "1", "--c", "2"],
                           main=False)
 
     def test_boolean_arg_and_args(self):
+        """Test boolean arguments and *args"""
         b = baker.Baker()
 
         @b.command
@@ -396,6 +393,7 @@ class TestBaker(unittest.TestCase):
                         (True, ("1", "2")))
 
     def test_noargs(self):
+        """Test with a function accepting no arguments"""
         b = baker.Baker()
 
         @b.command
@@ -405,6 +403,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.run(["script.py", "noargs"], main=False), 123)
 
     def test_alias(self):
+        """Test command alias"""
         b = baker.Baker()
 
         @b.command(name="track-all")
@@ -413,7 +412,12 @@ class TestBaker(unittest.TestCase):
 
         self.assertEqual(b.run(["script.py", "track-all"], main=False), 123)
 
+        ce = baker.CommandError
+        br = b.run
+        self.assertRaises(ce, br, ["s", "trackall"], main=False)
+
     def test_single_dash(self):
+        """Test single dash (input from stdin)"""
         b = baker.Baker()
 
         @b.command
@@ -426,7 +430,23 @@ class TestBaker(unittest.TestCase):
                                main=False),
                          ("first", 4))
 
+    def test_double_dash(self):
+        """Test double dash (--)"""
+        b = baker.Baker()
+
+        @b.command
+        def test(a, b=0, c=4):
+            return a, b, c
+
+        self.assertEqual(b.run(["s", "test", "-b", "7", "--", "6", "8"],
+                               main=False),
+                         ("6", 7, "8"))
+        self.assertRaises(baker.CommandError, b.run,
+                          ["s", "test", "9", "--", "10", "--", "9"],
+                          main=False)
+
     def test_nooptional(self):
+        """Test with a function accepting only positional arguments"""
         b = baker.Baker()
 
         @b.command
@@ -437,6 +457,7 @@ class TestBaker(unittest.TestCase):
                                main=False), ('1', '2', '3'))
 
     def test_test(self):
+        """Test 'test' mode"""
         b = baker.Baker()
 
         @b.command
@@ -446,6 +467,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(b.test(["s", "test", "1", "2"]), "test('1', '2')")
 
     def test_usage(self):
+        """Test usage output"""
         b = baker.Baker()
 
         @b.command
@@ -459,6 +481,7 @@ class TestBaker(unittest.TestCase):
                          'Usage: script.py test\n\nTest command\n')
 
     def test_varargs_usage(self):
+        """Test usage output when *args is used"""
         b = baker.Baker()
 
         @b.command
@@ -475,6 +498,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(out.getvalue(), VARARGS_HELP)
 
     def test_help(self):
+        """Test program help"""
         b = build_baker()
         out = StringIO()
         b.run(["script.py", "--help"], helpfile=out)
@@ -484,6 +508,7 @@ class TestBaker(unittest.TestCase):
         self.assertEqual(out.getvalue(), COMMAND_HELP)
 
     def test_writeconfig(self):
+        """Test Baker.writeconfig()"""
         b = build_baker()
         tempdir = tempfile.mkdtemp()
         ini = os.path.join(tempdir, "conf.ini")
@@ -493,6 +518,7 @@ class TestBaker(unittest.TestCase):
         shutil.rmtree(tempdir)
 
     def test_errors(self):
+        """Test various errors"""
         b = baker.Baker()
 
         @b.command
