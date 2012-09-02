@@ -33,7 +33,7 @@ from textwrap import wrap
 
 __version__ = '1.3'
 
-if sys.version_info[:2] < (3, 0):
+if sys.version_info[:2] < (3, 0):  # pragma: no cover
     range = xrange
 
 
@@ -254,8 +254,7 @@ class Baker(object):
             # arguments, try to get it from parameter annotations (Python 3.x)
             # or RST-style :param: lines in the docstring
             if params is None:
-                if hasattr(fn, "func_annotations") and fn.func_annotations:
-                    # Python 3.x
+                if hasattr(fn, "func_annotations") and fn.func_annotations:  # pragma: no cover
                     params = fn.func_annotations
                 else:
                     params = find_param_docs(docstring)
@@ -283,12 +282,22 @@ class Baker(object):
                       has_kwargs, docstring, varargs_name, params, is_method)
             # If global_command is True, set this as the global command
             if global_command:
+                if defaults is not None and len(defaults) != len(arglist):
+                    raise CommandError("Global commands cannot have "
+                                       "non-keywords arguments", None)
+                if self.defaultcommand is not None:
+                    raise CommandError("Default command is already set, you "
+                                       "cannot have both", None)
                 self.globalcommand = cmd
+                self.global_options = keywords
             else:
                 self.commands[name] = cmd
 
             # If default is True, set this as the default command
             if default:
+                if self.globalcommand:
+                    raise CommandError("Global command is already set, you "
+                                       "cannot have both", None)
                 self.defaultcommand = cmd
 
             return fn
@@ -354,7 +363,7 @@ class Baker(object):
             # A subclass of io.BufferedIOBase?
             binary = isinstance(fobj, io.BufferedIOBase)
         # If we are running under Python 3 and binary is required
-        if sys.version_info[:2] >= (3, 0) and convert and binary:
+        if sys.version_info[:2] >= (3, 0) and convert and binary:  # pragma: no cover
             content = bytes(content, 'utf-8')
 
         fobj.write(content)

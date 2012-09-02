@@ -7,7 +7,7 @@ import tempfile
 import unittest
 try:
     from cStringIO import StringIO
-except ImportError:  # python 3
+except ImportError:  # pragma: no cover
     from io import BytesIO as StringIO
 
 import baker
@@ -152,13 +152,13 @@ class TestBaker(unittest.TestCase):
 
     @staticmethod
     def bytes(string, encoding):
-        if sys.version_info[:2] >= (3, 0):
+        if sys.version_info[:2] >= (3, 0):  # pragma: no cover
             return bytes(string, encoding)
         return string
 
     def assertEqual(self, a, b):
         # this is for Python 3 compatibility
-        if sys.version_info[:2] >= (3, 0):
+        if sys.version_info[:2] >= (3, 0):  # pragma: no cover
             if isinstance(a, bytes) and not isinstance(b, bytes):
                 b = self.bytes(b, 'utf-8')
         super(TestBaker, self).assertEqual(a, b)
@@ -444,6 +444,65 @@ class TestBaker(unittest.TestCase):
         self.assertRaises(baker.CommandError, b.run,
                           ["s", "test", "9", "--", "10", "--", "9"],
                           main=False)
+
+    def test_global_command(self):
+        """Test whether global command works as expected"""
+        b = baker.Baker()
+        self.assertEqual(b.global_options, {})
+
+        @b.command(global_command=True)
+        def global_matcher(n=5, val=True, index="http://pypi.python.org/pypi"):
+            n = int(n)
+            if n > 40:
+                n = -1
+            return {"num": n, "val": val, "index": index}
+
+        @b.command
+        def test(req, bolly=False):
+            return req, bolly
+
+        @b.command
+        def second(a, b=0):
+            return a, b
+
+        default_global_options = {"n": 5, "val": True,
+                                  "index": "http://pypi.python.org/pypi"}
+        self.assertEqual(b.global_options, default_global_options)
+        self.assertEqual(b.run(["s", "test", "rio", "--bolly"], main=False),
+                         ("rio", True))
+        self.assertEqual(b.global_options, default_global_options)
+        self.assertEqual(b.run(["s", "second", "9"], main=False), ("9", 0))
+        self.assertEqual(b.global_options, default_global_options)
+        self.assertEqual(b.run(["s", "-n", "2", "--val", "--index", "short",
+                                "test", "pos"], main=False),
+                         ("pos", False))
+        self.assertEqual(b.global_options, {"num": 2, "val": False, "index":
+                                            "short"})
+
+    def test_global_command_error(self):
+        """Test whether global command raises errors as expected"""
+        def create_bad_global_command():
+            b = baker.Baker()
+
+            @b.command(global_command=True)
+            def test(a, b, key='val'):
+                pass
+
+        def create_both():
+            b = baker.Baker()
+
+            @b.command(global_command=True)
+            def test(a=1, b=2):
+                pass
+
+            @b.command(default=True)
+            def second(a, b, c=24):
+                pass
+
+
+        ce = baker.CommandError
+        self.assertRaises(ce, create_bad_global_command)
+        self.assertRaises(ce, create_both)
 
     def test_nooptional(self):
         """Test with a function accepting only positional arguments"""
