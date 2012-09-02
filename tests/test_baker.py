@@ -478,6 +478,23 @@ class TestBaker(unittest.TestCase):
                          ("pos", False))
         self.assertEqual(b.global_options, {"num": 2, "val": False, "index":
                                             "short"})
+        # Make sure that the real command is found even when the previous one
+        # starts with dashes (-- or -). This happens when the previous option
+        # is a boolean one.
+        self.assertEqual(b.run(["s", "-n", "45", "--val", "test", "pos"],
+                               main=False),
+                         ("pos", False))
+        self.assertEqual(b.global_options, {"num": -1, "val": False, "index":
+                                            "http://pypi.python.org/pypi"})
+
+    def test_global_options_get(self):
+        b = baker.Baker()
+        self.assertEqual(b.get('a', 5), 5)
+        self.assertEqual(b.get('a'), None)
+        b.global_options = {'a': 2, 'b': 3}
+        self.assertEqual(b.get('a'), 2)
+        self.assertEqual(b.get('b', False), 3)
+        self.assertEqual(b.get('c'), None)
 
     def test_global_command_error(self):
         """Test whether global command raises errors as expected"""

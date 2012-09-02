@@ -201,6 +201,25 @@ class Baker(object):
         self.globalcommand = None
         self.global_options = {}
 
+    def get(self, key, default=None):
+        """Shortcut for ``self.global_options.get()``.
+
+        :param key: The dictionary key.
+        :param default: The value to return when `key` is not present in
+            the dictionary. Otherwise, raise `KeyError`.
+
+        Example. This code::
+
+            >>> b = Baker()
+            >>> b.get('opt', 'fallback')
+
+        is the same as this one::
+
+            >>> b = Baker()
+            >>> b.global_options.get('opt', 'fallback')
+        """
+        return self.global_options.get(key, default)
+
     def command(self, fn=None, name=None, default=False,
                 params=None, shortopts=None, global_command=False):
         """
@@ -556,6 +575,8 @@ class Baker(object):
         self.write(fobj, "\n".join(self.return_cmd_doc(cmd)))
         self.write(fobj, "\n".join(self.return_argnames_doc(cmd)))
         self.write(fobj, "\n".join(self.return_keyword_doc(cmd)))
+        if self.globalcommand is not None:
+            self.write(fobj, "\n".join(self.return_cmd_doc(cmd)))
 
     def parse_args(self, scriptname, cmd, argv, test=False):
         """
@@ -747,8 +768,14 @@ class Baker(object):
             cmd = self.defaultcommand
             options = argv[1:]
         elif self.globalcommand is not None:
+            # First, get the name of the real command.
+            # It cannot be after an option (--opt) except when that option
+            # is a boolean (i.e. does not have a value).
             for i, arg in enumerate(argv[1:], 1):
-                if arg in self.commands and not argv[i - 1].startswith('-'):
+                prev = argv[i - 1]
+                is_prev_bool = isinstance(self.get(prev.lstrip('-')), bool)
+                candidate = not prev.startswith('-') or is_prev_bool
+                if arg in self.commands and candidate:
                     break
             else:
                 raise CommandError("No command specified", scriptname)
