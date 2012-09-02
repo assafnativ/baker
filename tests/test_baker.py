@@ -488,21 +488,31 @@ class TestBaker(unittest.TestCase):
             def test(a, b, key='val'):
                 pass
 
-        def create_both():
-            b = baker.Baker()
-
+        def create_global(b):
             @b.command(global_command=True)
             def test(a=1, b=2):
                 pass
 
+        def create_default(b):
             @b.command(default=True)
             def second(a, b, c=24):
                 pass
 
+        def create_both1():
+            b = baker.Baker()
+            create_global(b)
+            create_default(b)
+
+        def create_both2():
+            b = baker.Baker()
+            create_default(b)
+            create_global(b)
+
 
         ce = baker.CommandError
         self.assertRaises(ce, create_bad_global_command)
-        self.assertRaises(ce, create_both)
+        self.assertRaises(ce, create_both1)
+        self.assertRaises(ce, create_both2)
 
     def test_nooptional(self):
         """Test with a function accepting only positional arguments"""
