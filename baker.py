@@ -509,15 +509,15 @@ class Baker(object):
             ret.append("")
 
             # Get a list of keyword argument names
-            keynames = cmd.keywords.keys()
+            # cmd.argnames has arguments and keywords in order
+            keynames = [a for a in cmd.argnames if a in cmd.keywords]
 
             # Make formatted headings, e.g. " -k --keyword  ", and put them in
             # a list like [(name, heading), ...]
-            heads, rindent = [], None
-            for keyname in keynames:
-                head = self.return_head(cmd, keyname)
-                heads.append((keyname, head))
+            heads = [(keyname, self.return_head(cmd, keyname)) for keyname in
+                    keynames]
 
+            rindent = None
             if heads:
                 # Find the length of the longest formatted heading
                 rindent = max(len(head) + 2 for keyname, head in heads)
@@ -533,8 +533,9 @@ class Baker(object):
         if cmd.has_varargs:
             ret.extend(("", "Variable arguments:", ""))
             keyname = cmd.varargs_name
-            head = " *%s " % (keyname)
-            ret += self.return_individual_keyword_doc(cmd, keyname, head)
+            head = " *%s   " % (keyname)
+            ret += self.return_individual_keyword_doc(cmd, keyname, head,
+                    len(head))
 
         ret.append("")
         if any(cmd.keywords.get(a) is None for a in cmd.argnames):
