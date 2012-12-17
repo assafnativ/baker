@@ -16,7 +16,7 @@ import baker
 MAIN_HELP = """Usage: script.py COMMAND <options>
 
 Available commands:
- main  
+ main
  open  Open a URL.
 
 Use 'script.py <command> --help' for individual command help.
@@ -34,7 +34,7 @@ Options:
 
    --xml   use it if you want an xml output.
    --json  use it if you want a json output.
-   --use   
+   --use
 
 (specifying a double hyphen (--) in the argument list means all
 subsequent arguments are treated as bare arguments, not options)
@@ -46,28 +46,28 @@ Testing.
 """
 
 INI_SAMPLE = """[main]
-# 
-#    --port  
+#
+#    --port
 port = 8888
 
-#    --auth  
+#    --auth
 auth = False
 
 [open]
 # Open a URL.
-# 
-# 
+#
+#
 # Required Arguments:
-# 
+#
 #   url   url to open.
-# 
+#
 #    --xml  use it if you want an xml output.
 xml = False
 
 #    --json  use it if you want a json output.
 json = False
 
-#    --use  
+#    --use
 use = True
 """
 
@@ -77,7 +77,7 @@ Command documentation.
 
 Variable arguments:
 
-   *files Varargs documentation.
+   *files   Varargs documentation.
 """
 
 

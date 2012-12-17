@@ -352,13 +352,13 @@ class Baker(object):
         for cmdname, cmd in self.commands.items():
             ret.append("[%s]" % (cmdname))
             for line in self.return_cmd_doc(cmd):
-                ret.append("# " + line)
+                ret.append(("# " + line).rstrip())
             for line in self.return_argnames_doc(cmd):
-                ret.append("# " + line)
+                ret.append(("# " + line).rstrip())
             for key in cmd.keywords:
                 head = self.return_head(cmd, key)
                 for line in self.return_individual_keyword_doc(cmd, key, head):
-                    ret.append("# " + line)
+                    ret.append(("# " + line).rstrip())
                 ret.append("%s = %s\n" % (key, cmd.keywords[key]))
         with open(iniconffile, 'w+') as fp:
             self.write(fp, "\n".join(ret), False)
@@ -410,14 +410,16 @@ class Baker(object):
                 # Get the Cmd object for this command
                 cmd = self.commands[cmdname]
 
-                # Calculate the padding necessary to fill from the end of the
-                # command name to the documentation margin
-                tab = " " * (rindent - len(cmdname) - 1)
-                self.write(fobj, " " + cmdname + tab)
+                self.write(fobj, " " + cmdname)
 
                 # Get the paragraphs of the command's docstring
                 paras = process_docstring(cmd.docstring)
                 if paras:
+                    # Calculate the padding necessary to fill from the end of the
+                    # command name to the documentation margin
+                    tab = " " * (rindent - len(cmdname) - 1)
+                    self.write(fobj, tab)
+
                     # Print the first paragraph
                     self.write(fobj, "\n".join(format_paras([paras[0]], 76,
                                                indent=rindent,
@@ -485,7 +487,7 @@ class Baker(object):
             for line in formatted[1:]:
                 ret.append("  " + line)
         else:
-            ret.append("  " + head)
+            ret.append("  " + head.rstrip())
         return ret
 
     def return_head(self, cmd, keyname):
@@ -528,7 +530,8 @@ class Baker(object):
                 # Print the option docs
                 for keyname, head in heads:
                     ret += self.return_individual_keyword_doc(cmd, keyname,
-                                                              head, rindent)
+                                                              head, rindent -
+                                                              2)
 
         if cmd.has_varargs:
             ret.extend(("", "Variable arguments:", ""))
