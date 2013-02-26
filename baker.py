@@ -394,6 +394,13 @@ class Baker(object):
         :param scriptname: the name of the script being executed (argv[0]).
         :param fobj: the file to write the help to. The default is stdout.
         """
+        # show global command usage if have one
+        if self.globalcommand:
+            self.write(fobj, "\n".join(self.return_cmd_doc(self.globalcommand)))
+            self.write(fobj, "\n".join(self.return_argnames_doc(self.globalcommand)))
+            self.write(fobj, "\n".join(self.return_keyword_doc(self.globalcommand)))
+            self.write(fobj, "\n")
+ 
         # Print the basic help for running a command
         self.write(fobj, "Usage: %s COMMAND <options>\n\n" % scriptname)
 
