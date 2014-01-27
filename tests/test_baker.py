@@ -123,17 +123,27 @@ class TestFunctions(unittest.TestCase):
 
         :param add: Add a line.
         :param remove: Remove a line.
-        """
+        :param more_complicated: A little more complicated.
+            This is not just a test of indents.
 
+            but also how Baker handles blank lines.
+        :param yetanother: To make sure the regex is correct.
+        """
+        self.maxDiff = None
         self.assertEqual(baker.find_param_docs(docstring),
                          {"add": "Add a line.\n",
-                          "remove": "Remove a line.\n"})
+                          "remove": "Remove a line.\n",
+                          "more_complicated": "A little more complicated.\n            This is not just a test of indents.\n\n            but also how Baker handles blank lines.\n",
+                          "yetanother": "To make sure the regex is correct.\n"})
         self.assertEqual(baker.remove_param_docs(docstring),
                          "This is an example docstring.\n\n" + " " * 8)
         self.assertEqual(baker.process_docstring(docstring),
                          ["This is an example docstring.",
                           ":param add: Add a line. "
-                          ":param remove: Remove a line."])
+                          ":param remove: Remove a line. "
+                          ":param more_complicated: A little more complicated. This is not just a test of indents.",
+                          "but also how Baker handles blank lines. "
+                          ":param yetanother: To make sure the regex is correct."])
 
     def test_openinput(self):
         """Test Baker.openinput()"""

@@ -42,7 +42,7 @@ Cmd = namedtuple("Cmd", ["name", "fn", "argnames", "keywords", "shortopts",
                          "has_varargs", "has_kwargs", "docstring",
                          "varargs_name", "paramdocs", "is_method"])
 
-PARAM_RE = re.compile(r"^([\t ]*):param (.*?): ([^\n]*\n(\1[ \t]+[^\n]*\n)*)",
+PARAM_RE = re.compile(r"^([\t ]*):param (.*?): (.*\n(\1[ \t]+.*\n*)*)",
                       re.MULTILINE)
 
 
@@ -400,7 +400,7 @@ class Baker(object):
             self.write(fobj, "\n".join(self.return_argnames_doc(self.globalcommand)))
             self.write(fobj, "\n".join(self.return_keyword_doc(self.globalcommand)))
             self.write(fobj, "\n")
- 
+
         # Print the basic help for running a command
         self.write(fobj, "Usage: %s COMMAND <options>\n\n" % scriptname)
 
