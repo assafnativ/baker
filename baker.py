@@ -935,6 +935,7 @@ class Baker(object):
 
 _baker = Baker()
 command = _baker.command
+commands = _baker.commands
 run = _baker.run
 test = _baker.test
 usage = _baker.usage
