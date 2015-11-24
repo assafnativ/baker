@@ -1,3 +1,9 @@
+IMPORTANT NOTICE
+================
+
+I (@rubik), the current maintainer of Baker, am no longer able to maintain it.
+If someone wants to step in, contact me.
+
 History
 =======
 
@@ -34,17 +40,17 @@ Django's ``manage.py``, ``svn``, ``hg``, etc.::
 
 	#!python
 	import baker
-	
+
 	# An imaginary script full of useful Python functions
-	
+
 	@baker.command
 	def set(name, value=None, overwrite=False):
 		"""Sets the value of a key in the database.
-		
+
 		If you don't specify a value, the named key is deleted. Overwriting
 		a value may not be visible to all clients until the next full sync.
 		"""
-		
+
 	    db = get_database()
 	    if overwrite or name not in db:
 	        if value is None:
@@ -55,14 +61,14 @@ Django's ``manage.py``, ``svn``, ``hg``, etc.::
 	    		print "Set %s to %s" % (name, value)
 	    else:
 	    	print "Key exists!"
-	
+
 	@baker.command
 	def get(name):
 		"Prints the value of a key in the database."
-		
+
 		db = get_database()
 		print db.get(name)
-		
+
 	baker.run()
 
 You can then run the script and use your function names and parameters as the
@@ -70,36 +76,36 @@ command line interface, using ``optparse``-style options::
 
 	$ script.py set alfa bravo
 	Set alfa to bravo
-	
+
 	$ script.py set --overwrite alfa charlie
 	Set alfa to charlie
-	
+
 	$ script.py get alfa
 	charlie
-	
+
 	$ script.py --help
-	
+
 	Available commands:
-	
+
 	 get  Prints the value of a key in the database.
 	 set  Sets the value of a key in the database
-	 
+
 	Use "script.py <command> --help" for individual command help.
-	
+
 	$ script.py set --help
-	
+
 	Usage: script.py set <name> [<value>]
-	
+
 	Sets the value of a key in the database.
-	
+
 	    If you don't specify a value, the named key is deleted. Overwriting
 		a value may not be visible to all clients until the next full sync.
-	
+
 	Options:
 
         --overwrite
-   
-     
+
+
 Arguments
 =========
 
@@ -132,7 +138,7 @@ Bare arguments are used to fill in required parameters::
 Function parameters where the default is ``None`` are considered optional
 arguments and will be filled if extra arguments are available. Otherwise,
 extra bare arguments never fill in keyword parameters::
-  
+
   	@baker.command
   	def test(start, end=None, sortby="time"):
   	  print "start=", start, "end=", end, "sort=", sortby
@@ -144,7 +150,7 @@ extra bare arguments never fill in keyword parameters::
 
 If a keyword parameter's default is an int or float, Baker will try to
 convert the option's string to the same type::
-  
+
   	@baker.command
   	def test(limit=10):
   		print type(limit)
@@ -154,7 +160,7 @@ convert the option's string to the same type::
 
 If the default of a parameter is a boolean, the corresponding command line
 option is a flag that sets the opposite of the default::
-  
+
   	@baker.command
   	def test(name, verbose=False):
   	  if verbose: print "Opening", name
@@ -181,25 +187,25 @@ In the decorator::
 
 In Python 3.x, you can use parameter annotations to associate doc strings
 with parameters::
-  
+
     @baker.command
     def delete(filename, force:"Delete even if the file exists."=False):
     	"Deletes a file."
 		if force or not os.path.exists(filename):
 			os.remove(filename)
-			
+
 Baker can parse the function's docstring for Sphinx-style ``:param`` blocks::
 
 	@baker.command
 	def delete(filename, force=False):
 		"""Deletes a file.
-		
+
 		:param force: Delete even if the file exists.
 		"""
 		if force or not os.path.exists(filename):
 			os.remove(filename)
-    
-    
+
+
 Short options
 =============
 
@@ -211,13 +217,13 @@ the ``shortopts`` keyword on the decorator::
 		pass
 
 	$ script.py test --help
-	
+
 	Usage: script.py test
-	
+
 	Options:
-	
+
 	 -v --verbose  Spew lots
-	 
+
 You can group multiple short flag options together (``-xvc``). You can also
 optionally not put a space between a short option and its argument, for
 example ``-nCASE`` instead of ``-n CASE``.
@@ -249,10 +255,10 @@ programmatically::
 
 	# Print overall help
 	baker.usage()
-	
+
 	# Print help for a command
 	baker.usage("commandname")
-	
+
 	# Print to a file
 	baker.usage("commandname", file=sys.stdout)
 
@@ -266,39 +272,39 @@ Baker will call your function based on the given command line.
 As in many UNIX command line utilities, if you specify a single hyphen
 (``-``) as a bare argument, any subsequent arguments will not parsed as
 options, even if they start with ``--``.
-  
+
 Commands are automatically given the same name as the decorated function.
 To give a command a different name, use the ``name`` keyword on the
 decorator. This is especially useful when the command name you want
 isn't a valid Python identifier::
-  
+
   	@baker.command(name="track-all")
   	def trackall():
   		pass
 
 You can specify a "default" command that is used when the first argument
 to the script doesn't look like a command name::
-  
+
   	@baker.command(default=True)
   	def here(back=False):
   	  print "here! back=", back
-  	  
+
   	@baker.command
   	def there(back=False):
   	  print "there! back=", back
 
   	$ script.py --back
   	here! back= True
-  	
+
 The ``baker`` module contains a ``Baker`` class you can instantiate if you
 don't want to use the global functions::
 
 	mybaker = baker.Baker()
-	
+
 	@mybaker.command
 	def test():
 		print "hello"
-	
+
 	mybaker.run()
 
 
