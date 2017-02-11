@@ -199,7 +199,7 @@ class Baker(object):
         self.commands = {}
         self.defaultcommand = None
         self.globalcommand = None
-        self.global_options = {}
+        self.global_options = global_options or {}
 
     def get(self, key, default=None):
         """Shortcut for ``self.global_options.get()``.
